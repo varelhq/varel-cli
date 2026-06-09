@@ -9,7 +9,7 @@ describe("defaults", () => {
 
   it("uses production VibeShip endpoints by default", () => {
     expect(defaultApiUrl()).toBe("https://vibeship.dev");
-    expect(defaultPilotMcpUrl()).toBe("https://pilot.vibeship.dev/mcp");
+    expect(defaultPilotMcpUrl()).toBe("https://pilot.vibeship.today/mcp");
   });
 
   it("uses the local internal app while developing the CLI", () => {

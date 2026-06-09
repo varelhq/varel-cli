@@ -76,5 +76,5 @@ export function defaultApiUrl() {
 }
 
 export function defaultPilotMcpUrl() {
-  return process.env.VIBESHIP_PILOT_MCP_URL ?? "https://pilot.vibeship.dev/mcp";
+  return process.env.VIBESHIP_PILOT_MCP_URL ?? "https://pilot.vibeship.today/mcp";
 }

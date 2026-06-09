@@ -8,10 +8,10 @@ import { installPilotCodexConfig, pilotCodexConfig } from "./codex.js";
 
 describe("Codex Pilot config", () => {
   it("renders streamable HTTP MCP config", () => {
-    expect(pilotCodexConfig({ mcpUrl: "https://pilot.vibeship.dev/mcp" }))
+    expect(pilotCodexConfig({ mcpUrl: "https://pilot.vibeship.today/mcp" }))
       .toMatchInlineSnapshot(`
         "[mcp_servers.vibeship-pilot]
-        url = "https://pilot.vibeship.dev/mcp"
+        url = "https://pilot.vibeship.today/mcp"
         bearer_token_env_var = "VIBESHIP_PILOT_TOKEN"
         default_tools_approval_mode = "prompt"
         "
