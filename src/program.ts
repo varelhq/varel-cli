@@ -342,7 +342,7 @@ export async function run(argv: string[]) {
   program
     .name("vibeship")
     .description("Initialize VibeShip starter apps and install VibeShip Hyperdrive.")
-    .version("0.1.0")
+    .version("0.2.0")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
