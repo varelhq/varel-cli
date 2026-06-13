@@ -5,16 +5,16 @@ import { Command } from "commander";
 import { execa } from "execa";
 import open from "open";
 
-import { fetchEntitlements, fetchPilotMcpStatus } from "./api.js";
+import { fetchEntitlements, fetchHyperdriveMcpStatus } from "./api.js";
 import {
   clearAuth,
   defaultApiUrl,
-  defaultPilotMcpUrl,
+  defaultHyperdriveMcpUrl,
   readConfig,
   requireAuth,
   writeConfig,
 } from "./config.js";
-import { installPilotCodexConfig } from "./codex.js";
+import { installHyperdriveCodexConfig } from "./codex.js";
 import { startBrowserLogin } from "./login.js";
 import { line, renderDone, renderInfo } from "./ui.js";
 
@@ -138,7 +138,7 @@ async function commandWhoami(options: { apiUrl?: string } = {}) {
     line("email", status.email ?? auth.email ?? "unknown"),
     line("api", apiUrl, "muted"),
     line("starter", status.starterAccess ? "ready" : "missing", status.starterAccess ? "success" : "warning"),
-    line("pilot", status.pilotActive ? "active" : "inactive", status.pilotActive ? "success" : "warning"),
+    line("hyperdrive", status.hyperdriveActive ? "active" : "inactive", status.hyperdriveActive ? "success" : "warning"),
   ]);
 }
 
@@ -149,7 +149,7 @@ async function commandDoctor(options: { projectDir?: string; apiUrl?: string }) 
   const codexConfig = path.join(projectDir, ".codex", "config.toml");
   const hasAuth = Boolean(config.auth?.token);
   const hasProject = fs.existsSync(marker);
-  const hasPilotConfig = fs.existsSync(codexConfig);
+  const hasHyperdriveConfig = fs.existsSync(codexConfig);
 
   renderInfo(
     "Doctor",
@@ -157,9 +157,9 @@ async function commandDoctor(options: { projectDir?: string; apiUrl?: string }) 
       line("auth", hasAuth ? "present" : "missing", hasAuth ? "success" : "warning"),
       line("api", options.apiUrl ?? config.apiUrl ?? defaultApiUrl(), "muted"),
       line("project", hasProject ? "vibeship starter" : "not detected", hasProject ? "success" : "warning"),
-      line("pilot config", hasPilotConfig ? codexConfig : "not installed", hasPilotConfig ? "success" : "warning"),
+      line("hyperdrive config", hasHyperdriveConfig ? codexConfig : "not installed", hasHyperdriveConfig ? "success" : "warning"),
     ],
-    doctorActions({ hasAuth, hasProject, hasPilotConfig, projectDir }),
+    doctorActions({ hasAuth, hasProject, hasHyperdriveConfig, projectDir }),
   );
 }
 
@@ -251,11 +251,11 @@ async function commandInit(options: {
   renderDone(
     "Starter initialized",
     [line("directory", targetDir)],
-    [`cd ${targetDir}`, "vibeship pilot install"],
+    [`cd ${targetDir}`, "vibeship hyperdrive install"],
   );
 }
 
-async function commandPilotInstall(options: {
+async function commandHyperdriveInstall(options: {
   projectDir?: string;
   mcpUrl?: string;
   apiUrl?: string;
@@ -268,29 +268,29 @@ async function commandPilotInstall(options: {
     auth,
   });
 
-  if (!status.pilotActive) {
-    throw new Error("This account does not have an active VibeShip Pilot subscription.");
+  if (!status.hyperdriveActive) {
+    throw new Error("This account does not have an active VibeShip Hyperdrive subscription.");
   }
 
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
-  const mcpUrl = options.mcpUrl ?? config.pilotMcpUrl ?? defaultPilotMcpUrl();
-  const file = installPilotCodexConfig({ projectDir, mcpUrl });
+  const mcpUrl = options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
+  const file = installHyperdriveCodexConfig({ projectDir, mcpUrl });
 
   renderDone(
-    "Pilot installed",
+    "Hyperdrive installed",
     [
       line("project", projectDir),
       line("config", file),
       line("mcp", mcpUrl),
     ],
     [
-      "export VIBESHIP_PILOT_TOKEN=$(vibeship whoami --token-only)",
-      "Open Codex in this project and use VibeShip Pilot.",
+      "export VIBESHIP_HYPERDRIVE_TOKEN=$(vibeship whoami --token-only)",
+      "Open Codex in this project and use VibeShip Hyperdrive.",
     ],
   );
 }
 
-async function commandPilotStatus(options: {
+async function commandHyperdriveStatus(options: {
   projectDir?: string;
   apiUrl?: string;
   mcpUrl?: string;
@@ -304,28 +304,28 @@ async function commandPilotStatus(options: {
   });
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
   const codexConfig = path.join(projectDir, ".codex", "config.toml");
-  const hasPilotConfig = fs.existsSync(codexConfig);
-  const mcpUrl = options.mcpUrl ?? config.pilotMcpUrl ?? defaultPilotMcpUrl();
+  const hasHyperdriveConfig = fs.existsSync(codexConfig);
+  const mcpUrl = options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
   const details = [
-    line("subscription", status.pilotActive ? "active" : "inactive", status.pilotActive ? "success" : "warning"),
+    line("subscription", status.hyperdriveActive ? "active" : "inactive", status.hyperdriveActive ? "success" : "warning"),
     line("project", projectDir),
-    line("config", hasPilotConfig ? codexConfig : "missing", hasPilotConfig ? "success" : "warning"),
+    line("config", hasHyperdriveConfig ? codexConfig : "missing", hasHyperdriveConfig ? "success" : "warning"),
     line("mcp", mcpUrl, "muted"),
   ];
 
   try {
-    const pilotStatus = await fetchPilotMcpStatus({ mcpUrl, auth });
+    const hyperdriveStatus = await fetchHyperdriveMcpStatus({ mcpUrl, auth });
     details.push(
       line(
         "mcp auth",
-        pilotStatus.authenticated
+        hyperdriveStatus.authenticated
           ? "accepted"
-          : `rejected: ${pilotStatus.reason ?? "unknown"}`,
-        pilotStatus.authenticated ? "success" : "warning",
+          : `rejected: ${hyperdriveStatus.reason ?? "unknown"}`,
+        hyperdriveStatus.authenticated ? "success" : "warning",
       ),
       line(
         "server",
-        `${pilotStatus.server.name}@${pilotStatus.server.version}`,
+        `${hyperdriveStatus.server.name}@${hyperdriveStatus.server.version}`,
         "muted",
       ),
     );
@@ -334,14 +334,14 @@ async function commandPilotStatus(options: {
     details.push(line("mcp check", message.slice(0, 140), "warning"));
   }
 
-  renderDone("Pilot status", details);
+  renderDone("Hyperdrive status", details);
 }
 
 export async function run(argv: string[]) {
   const program = new Command();
   program
     .name("vibeship")
-    .description("Initialize VibeShip starter apps and install VibeShip Pilot.")
+    .description("Initialize VibeShip starter apps and install VibeShip Hyperdrive.")
     .version("0.1.0")
     .showHelpAfterError()
     .showSuggestionAfterError()
@@ -352,12 +352,12 @@ export async function run(argv: string[]) {
 Examples:
   $ vibeship login
   $ vibeship init my-app
-  $ vibeship pilot install --project-dir ./my-app
+  $ vibeship hyperdrive install --project-dir ./my-app
   $ vibeship doctor
 
 Environment:
   VIBESHIP_API_URL            Override the VibeShip API URL.
-  VIBESHIP_PILOT_MCP_URL      Override the Pilot MCP URL.
+  VIBESHIP_HYPERDRIVE_MCP_URL      Override the Hyperdrive MCP URL.
   VIBESHIP_STARTER_REPO_URL   Override the starter repository clone URL.
   VIBESHIP_CLI_OFFLINE=1      Use local entitlement fixtures for development.
 `,
@@ -392,7 +392,7 @@ Environment:
 
   program
     .command("doctor")
-    .description("Inspect auth, project, and Pilot config for this directory.")
+    .description("Inspect auth, project, and Hyperdrive config for this directory.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
     .option("--api-url <url>", "VibeShip API URL")
     .action(commandDoctor);
@@ -409,21 +409,21 @@ Environment:
       commandInit({ ...options, targetDir }),
     );
 
-  const pilot = program.command("pilot").description("Manage VibeShip Pilot setup.");
-  pilot
+  const hyperdrive = program.command("hyperdrive").description("Manage VibeShip Hyperdrive setup.");
+  hyperdrive
     .command("install")
-    .description("Install Pilot MCP config into a Codex project.")
+    .description("Install Hyperdrive MCP config into a Codex project.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
-    .option("--mcp-url <url>", "Pilot MCP URL")
+    .option("--mcp-url <url>", "Hyperdrive MCP URL")
     .option("--api-url <url>", "VibeShip API URL")
-    .action(commandPilotInstall);
-  pilot
+    .action(commandHyperdriveInstall);
+  hyperdrive
     .command("status")
-    .description("Show Pilot subscription and project config status.")
+    .description("Show Hyperdrive subscription and project config status.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
     .option("--api-url <url>", "VibeShip API URL")
-    .option("--mcp-url <url>", "Pilot MCP URL")
-    .action(commandPilotStatus);
+    .option("--mcp-url <url>", "Hyperdrive MCP URL")
+    .action(commandHyperdriveStatus);
 
   await program.parseAsync(normalizeArgv(argv));
 }
@@ -441,12 +441,12 @@ export function normalizeArgv(argv: string[]) {
 function doctorActions({
   hasAuth,
   hasProject,
-  hasPilotConfig,
+  hasHyperdriveConfig,
   projectDir,
 }: {
   hasAuth: boolean;
   hasProject: boolean;
-  hasPilotConfig: boolean;
+  hasHyperdriveConfig: boolean;
   projectDir: string;
 }) {
   const actions: string[] = [];
@@ -459,11 +459,11 @@ function doctorActions({
     actions.push("Run from a starter app, or create one with vibeship init my-app.");
   }
 
-  if (!hasPilotConfig) {
+  if (!hasHyperdriveConfig) {
     actions.push(
       projectDir === process.cwd()
-        ? "vibeship pilot install"
-        : `vibeship pilot install --project-dir ${projectDir}`,
+        ? "vibeship hyperdrive install"
+        : `vibeship hyperdrive install --project-dir ${projectDir}`,
     );
   }
 

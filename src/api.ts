@@ -4,11 +4,11 @@ import { z } from "zod";
 export type EntitlementStatus = {
   email?: string;
   starterAccess: boolean;
-  pilotActive: boolean;
+  hyperdriveActive: boolean;
   entitlements: string[];
 };
 
-const pilotMcpStatusSchema = z
+const hyperdriveMcpStatusSchema = z
   .object({
     authenticated: z.boolean(),
     subject: z.string().nullable().optional(),
@@ -30,7 +30,7 @@ const pilotMcpStatusSchema = z
   })
   .passthrough();
 
-export type PilotMcpStatus = z.infer<typeof pilotMcpStatusSchema>;
+export type HyperdriveMcpStatus = z.infer<typeof hyperdriveMcpStatusSchema>;
 
 export async function fetchEntitlements({
   apiUrl,
@@ -43,8 +43,8 @@ export async function fetchEntitlements({
     return {
       email: auth.email,
       starterAccess: true,
-      pilotActive: true,
-      entitlements: ["license:starter", "pilot:active"],
+      hyperdriveActive: true,
+      entitlements: ["license:starter", "hyperdrive:active"],
     };
   }
 
@@ -76,7 +76,7 @@ export async function fetchEntitlements({
   return (await response.json()) as EntitlementStatus;
 }
 
-export async function fetchPilotMcpStatus({
+export async function fetchHyperdriveMcpStatus({
   mcpUrl,
   auth,
   fetchImpl = fetch,
@@ -84,7 +84,7 @@ export async function fetchPilotMcpStatus({
   mcpUrl: string;
   auth: AuthState;
   fetchImpl?: typeof fetch;
-}): Promise<PilotMcpStatus> {
+}): Promise<HyperdriveMcpStatus> {
   const url = new URL(mcpUrl);
   let response: Response;
 
@@ -101,19 +101,19 @@ export async function fetchPilotMcpStatus({
         id: "vibeship-cli-status",
         method: "tools/call",
         params: {
-          name: "vibeship_pilot_status",
+          name: "vibeship_hyperdrive_status",
           arguments: {},
         },
       }),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Could not reach Pilot MCP at ${url.origin}: ${message}`);
+    throw new Error(`Could not reach Hyperdrive MCP at ${url.origin}: ${message}`);
   }
 
   if (!response.ok) {
     throw new Error(
-      `Pilot MCP check failed with HTTP ${response.status}${await responseSuffix(
+      `Hyperdrive MCP check failed with HTTP ${response.status}${await responseSuffix(
         response,
       )}.`,
     );
@@ -132,16 +132,16 @@ export async function fetchPilotMcpStatus({
       typeof body.error.message === "string"
         ? body.error.message
         : "JSON-RPC error";
-    throw new Error(`Pilot MCP check failed: ${message}`);
+    throw new Error(`Hyperdrive MCP check failed: ${message}`);
   }
 
   const status =
     body.result?.structuredContent ??
     parseTextContent(body.result?.content?.find((item) => item.type === "text"));
-  const parsed = pilotMcpStatusSchema.safeParse(status);
+  const parsed = hyperdriveMcpStatusSchema.safeParse(status);
 
   if (!parsed.success) {
-    throw new Error("Pilot MCP status response was not recognized.");
+    throw new Error("Hyperdrive MCP status response was not recognized.");
   }
 
   return parsed.data;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { defaultApiUrl, defaultPilotMcpUrl } from "./config.js";
+import { defaultApiUrl, defaultHyperdriveMcpUrl } from "./config.js";
 
 describe("defaults", () => {
   afterEach(() => {
@@ -9,7 +9,7 @@ describe("defaults", () => {
 
   it("uses production VibeShip endpoints by default", () => {
     expect(defaultApiUrl()).toBe("https://www.vibeship.today");
-    expect(defaultPilotMcpUrl()).toBe("https://pilot.vibeship.today/mcp");
+    expect(defaultHyperdriveMcpUrl()).toBe("https://hyperdrive.vibeship.today/mcp");
   });
 
   it("uses the local internal app while developing the CLI", () => {

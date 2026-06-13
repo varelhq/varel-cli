@@ -16,13 +16,13 @@ export type AuthState = z.infer<typeof authStateSchema>;
 export type CliConfig = {
   auth?: AuthState;
   apiUrl?: string;
-  pilotMcpUrl?: string;
+  hyperdriveMcpUrl?: string;
 };
 
 const configSchema = z.object({
   auth: authStateSchema.optional(),
   apiUrl: z.string().url().optional(),
-  pilotMcpUrl: z.string().url().optional(),
+  hyperdriveMcpUrl: z.string().url().optional(),
 });
 
 export function configDir() {
@@ -75,6 +75,6 @@ export function defaultApiUrl() {
   return "https://www.vibeship.today";
 }
 
-export function defaultPilotMcpUrl() {
-  return process.env.VIBESHIP_PILOT_MCP_URL ?? "https://pilot.vibeship.today/mcp";
+export function defaultHyperdriveMcpUrl() {
+  return process.env.VIBESHIP_HYPERDRIVE_MCP_URL ?? "https://hyperdrive.vibeship.today/mcp";
 }

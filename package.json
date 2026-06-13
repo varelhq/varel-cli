@@ -1,7 +1,7 @@
 {
   "name": "@vibeshiphq/cli",
   "version": "0.1.0",
-  "description": "VibeShip CLI for starter initialization and Pilot setup.",
+  "description": "VibeShip CLI for starter initialization and Hyperdrive setup.",
   "type": "module",
   "license": "UNLICENSED",
   "homepage": "https://www.vibeship.today",
