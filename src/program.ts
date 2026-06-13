@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import readline from "node:readline/promises";
 
 import { Command } from "commander";
 import { execa } from "execa";
@@ -16,6 +17,16 @@ import {
 } from "./config.js";
 import { installHyperdriveCodexConfig } from "./codex.js";
 import { startBrowserLogin } from "./login.js";
+import {
+  parseIntegrations,
+  parseWorkflow,
+  setupConfigForWorkflow,
+  setupIntegrations,
+  writeProjectSetupConfig,
+  type SetupConfig,
+  type SetupIntegration,
+  type SetupWorkflow,
+} from "./project-config.js";
 import { line, renderDone, renderInfo } from "./ui.js";
 
 const STARTER_REPO_SSH = "git@github.com:vibeshiphq/vibeship-starter.git";
@@ -204,6 +215,72 @@ async function cloneStarter({
   );
 }
 
+export function shouldPromptForSetup(options: {
+  workflow?: string;
+  integrations?: string;
+  interactive?: boolean;
+}) {
+  if (options.interactive === false) {
+    return false;
+  }
+
+  return (
+    !options.workflow &&
+    !options.integrations &&
+    Boolean(process.stdin.isTTY && process.stdout.isTTY)
+  );
+}
+
+function parseIntegrationAnswer(answer: string): SetupIntegration[] | undefined {
+  return parseIntegrations(answer.trim() || undefined);
+}
+
+async function promptForSetupConfig(): Promise<SetupConfig> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  try {
+    const workflowAnswer = await rl.question(
+      "Setup workflow [1 local-first, 2 launch-ready] (1): ",
+    );
+    const workflow: SetupWorkflow =
+      workflowAnswer.trim() === "2" || workflowAnswer.trim() === "launch-ready"
+        ? "launch-ready"
+        : "local-first";
+    const defaultList = setupIntegrations
+      .filter((integration) =>
+        ["clerk", "convex", "polar", "resend", "vercel"].includes(integration),
+      )
+      .join(",");
+    const integrationsAnswer = await rl.question(
+      `Enabled integrations (${defaultList}): `,
+    );
+    return setupConfigForWorkflow({
+      workflow,
+      integrations: parseIntegrationAnswer(integrationsAnswer) ?? undefined,
+    });
+  } finally {
+    rl.close();
+  }
+}
+
+export async function resolveInitSetupConfig(options: {
+  workflow?: string;
+  integrations?: string;
+  interactive?: boolean;
+}): Promise<SetupConfig> {
+  if (shouldPromptForSetup(options)) {
+    return promptForSetupConfig();
+  }
+
+  return setupConfigForWorkflow({
+    workflow: parseWorkflow(options.workflow),
+    integrations: parseIntegrations(options.integrations),
+  });
+}
+
 async function commandInit(options: {
   targetDir?: string;
   dir?: string;
@@ -211,6 +288,8 @@ async function commandInit(options: {
   repoUrl?: string;
   skipInstall?: boolean;
   apiUrl?: string;
+  workflow?: string;
+  integrations?: string;
 }) {
   const config = readConfig();
   const auth = requireAuth(config);
@@ -225,6 +304,10 @@ async function commandInit(options: {
   }
 
   const targetDir = path.resolve(options.dir ?? options.targetDir ?? "vibeship-app");
+  const setup = await resolveInitSetupConfig({
+    workflow: options.workflow,
+    integrations: options.integrations,
+  });
   renderInfo("Initializing starter", [
     line("directory", targetDir),
     line(
@@ -236,6 +319,8 @@ async function commandInit(options: {
             .join(" then "),
     ),
     line("install", options.skipInstall ? "skipped" : "pnpm install"),
+    line("workflow", setup.workflow),
+    line("environments", setup.environments.join(", ")),
   ]);
 
   await cloneStarter({
@@ -243,6 +328,8 @@ async function commandInit(options: {
     localStarter: options.localStarter,
     repoUrl: options.repoUrl,
   });
+
+  writeProjectSetupConfig({ projectDir: targetDir, setup });
 
   if (!options.skipInstall) {
     await execa("pnpm", ["install"], { cwd: targetDir, stdio: "inherit" });
@@ -342,7 +429,7 @@ export async function run(argv: string[]) {
   program
     .name("vibeship")
     .description("Initialize VibeShip starter apps and install VibeShip Hyperdrive.")
-    .version("0.2.0")
+    .version("0.2.1")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
@@ -352,6 +439,7 @@ export async function run(argv: string[]) {
 Examples:
   $ vibeship login
   $ vibeship init my-app
+  $ vibeship init my-app --workflow local-first --integrations clerk,convex,polar,resend,vercel
   $ vibeship hyperdrive install --project-dir ./my-app
   $ vibeship doctor
 
@@ -405,6 +493,11 @@ Environment:
     .option("--repo-url <url>", "Override the starter repository clone URL")
     .option("--skip-install", "Skip pnpm install")
     .option("--api-url <url>", "VibeShip API URL")
+    .option("--workflow <workflow>", "Setup workflow: local-first or launch-ready")
+    .option(
+      "--integrations <list>",
+      "Comma-separated setup integrations to enable",
+    )
     .action((targetDir: string | undefined, options) =>
       commandInit({ ...options, targetDir }),
     );
