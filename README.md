@@ -3,7 +3,7 @@
 Public CLI for initializing the private Varel core and installing Varel Hyperdrive for guided setup.
 
 ```bash
-npm install -g @varelhq/cli
+npm install -g @varel/cli
 varel login
 varel init my-app
 cd my-app
