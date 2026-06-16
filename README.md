@@ -1,37 +1,37 @@
-# VibeShip CLI
+# Varel CLI
 
-Public CLI for initializing the private VibeShip starter and installing VibeShip Hyperdrive for guided setup.
+Public CLI for initializing the private Varel core and installing Varel Hyperdrive for guided setup.
 
 ```bash
-npm install -g @vibeshiphq/cli
-vibeship login
-vibeship init my-app
+npm install -g @varelhq/cli
+varel login
+varel init my-app
 cd my-app
-vibeship hyperdrive install
+varel hyperdrive install
 ```
 
-The CLI does not embed proprietary setup runbooks. It authenticates the user, checks starter/Hyperdrive entitlement through VibeShip, clones the private starter, and writes local Codex MCP config for Hyperdrive.
+The CLI does not embed proprietary setup runbooks. It authenticates the user, checks core/Hyperdrive entitlement through Varel, clones the private core, and writes local Codex MCP config for Hyperdrive.
 
 ## Commands
 
 ```bash
-vibeship login                    # Authenticate this machine with VibeShip
-vibeship logout                   # Remove local CLI auth
-vibeship whoami                   # Show account and entitlement status
-vibeship doctor                   # Inspect auth, project, and Hyperdrive config
-vibeship init [targetDir]         # Clone the private starter into a new app
-vibeship hyperdrive install   # Install Hyperdrive MCP config into .codex/config.toml
-vibeship hyperdrive status    # Show Hyperdrive subscription, config, and MCP reachability
+varel login                    # Authenticate this machine with Varel
+varel logout                   # Remove local CLI auth
+varel whoami                   # Show account and entitlement status
+varel doctor                   # Inspect auth, project, and Hyperdrive config
+varel init [targetDir]         # Clone the private core into a new app
+varel hyperdrive install   # Install Hyperdrive MCP config into .codex/config.toml
+varel hyperdrive status    # Show Hyperdrive subscription, config, and MCP reachability
 ```
 
-Configuration is stored at `~/.vibeship/config.json`. The default production API is `https://www.vibeship.today`; override it with `VIBESHIP_API_URL` or `--api-url` when dogfooding against a local internal app.
+Configuration is stored at `~/.varel/config.json`. The default production API is `https://www.varel.dev`; override it with `VAREL_API_URL` or `--api-url` when dogfooding against a local internal app.
 
-Hyperdrive MCP defaults to `https://hyperdrive.vibeship.today/mcp`; override it with
-`VIBESHIP_HYPERDRIVE_MCP_URL` or `--mcp-url`. `vibeship hyperdrive status` calls Hyperdrive's
-`vibeship_hyperdrive_status` MCP tool with your stored CLI token and reports whether
+Hyperdrive MCP defaults to `https://hyperdrive.varel.dev/mcp`; override it with
+`VAREL_HYPERDRIVE_MCP_URL` or `--mcp-url`. `varel hyperdrive status` calls Hyperdrive's
+`varel_hyperdrive_status` MCP tool with your stored CLI token and reports whether
 the server accepted the token.
 
-`vibeship init` checks your VibeShip entitlement first, then tries to clone the private starter over SSH and falls back to HTTPS. If GitHub access fails after entitlement approval, connect the Polar GitHub repository access benefit in the VibeShip customer portal, verify access to `vibeshiphq/vibeship-starter`, and rerun `vibeship init`. Support can provide `--repo-url` or `VIBESHIP_STARTER_REPO_URL` for temporary clone overrides.
+`varel init` checks your Varel entitlement first, then tries to clone the private core over SSH and falls back to HTTPS. If GitHub access fails after entitlement approval, connect the Polar GitHub repository access benefit in the Varel customer portal, verify access to `varelhq/varel-core`, and rerun `varel init`. Support can provide `--repo-url` or `VAREL_CORE_REPO_URL` for temporary clone overrides.
 
 ## Development
 
@@ -46,23 +46,23 @@ pnpm dev -- --help
 Run the internal app first:
 
 ```bash
-cd ~/projects/vibeship-workspace/internal
+cd ~/projects/varel-workspace/internal
 pnpm dev
 ```
 
 Then log in from the CLI repo:
 
 ```bash
-cd ~/projects/vibeship-workspace/cli
+cd ~/projects/varel-workspace/cli
 pnpm dev login
 ```
 
-When invoked through the `dev` script, the CLI uses `http://localhost:3000` as the VibeShip API URL. A built CLI uses production defaults.
+When invoked through the `dev` script, the CLI uses `http://localhost:3000` as the Varel API URL. A built CLI uses production defaults.
 
 For offline CLI UI work:
 
 ```bash
-VIBESHIP_CLI_OFFLINE=1 pnpm dev -- whoami
+VAREL_CLI_OFFLINE=1 pnpm dev -- whoami
 ```
 
 ## Publishing

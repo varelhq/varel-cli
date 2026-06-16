@@ -8,8 +8,8 @@ import {
   normalizeArgv,
   resolveInitSetupConfig,
   shouldPromptForSetup,
-  starterCloneRecoveryActions,
-  starterCloneSources,
+  coreCloneRecoveryActions,
+  coreCloneSources,
 } from "./program.js";
 import { writeProjectSetupConfig } from "./project-config.js";
 
@@ -34,36 +34,36 @@ describe("program argv", () => {
     ]);
   });
 
-  it("tries SSH and HTTPS starter clone URLs by default", () => {
-    expect(starterCloneSources()).toEqual([
+  it("tries SSH and HTTPS core clone URLs by default", () => {
+    expect(coreCloneSources()).toEqual([
       {
         label: "ssh",
-        url: "git@github.com:vibeshiphq/vibeship-starter.git",
+        url: "git@github.com:varelhq/varel-core.git",
       },
       {
         label: "https",
-        url: "https://github.com/vibeshiphq/vibeship-starter.git",
+        url: "https://github.com/varelhq/varel-core.git",
       },
     ]);
   });
 
-  it("allows support to override the starter clone URL", () => {
-    expect(starterCloneSources("https://example.com/custom.git")).toEqual([
+  it("allows support to override the core clone URL", () => {
+    expect(coreCloneSources("https://example.com/custom.git")).toEqual([
       { label: "custom", url: "https://example.com/custom.git" },
     ]);
 
-    vi.stubEnv("VIBESHIP_STARTER_REPO_URL", "file:///tmp/starter.git");
-    expect(starterCloneSources()).toEqual([
-      { label: "custom", url: "file:///tmp/starter.git" },
+    vi.stubEnv("VAREL_CORE_REPO_URL", "file:///tmp/core.git");
+    expect(coreCloneSources()).toEqual([
+      { label: "custom", url: "file:///tmp/core.git" },
     ]);
   });
 
   it("explains GitHub access recovery when clone fails", () => {
     expect(
-      starterCloneRecoveryActions([
+      coreCloneRecoveryActions([
         {
           label: "ssh",
-          url: "git@github.com:vibeshiphq/vibeship-starter.git",
+          url: "git@github.com:varelhq/varel-core.git",
           message: "Permission denied",
         },
       ]).join("\n"),
@@ -114,13 +114,13 @@ describe("program argv", () => {
     expect(shouldPromptForSetup({ integrations: "clerk" })).toBe(false);
   });
 
-  it("writes setup into .vibeship/project.json", async () => {
-    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "vibeship-cli-"));
+  it("writes setup into .varel/project.json", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "varel-cli-"));
     try {
-      await fs.mkdir(path.join(tempRoot, ".vibeship"));
+      await fs.mkdir(path.join(tempRoot, ".varel"));
       await fs.writeFile(
-        path.join(tempRoot, ".vibeship/project.json"),
-        JSON.stringify({ name: "app", starter: true }),
+        path.join(tempRoot, ".varel/project.json"),
+        JSON.stringify({ name: "app", core: true }),
       );
 
       writeProjectSetupConfig({
@@ -141,7 +141,7 @@ describe("program argv", () => {
       });
 
       await expect(
-        fs.readFile(path.join(tempRoot, ".vibeship/project.json"), "utf8"),
+        fs.readFile(path.join(tempRoot, ".varel/project.json"), "utf8"),
       ).resolves.toContain('"workflow": "local-first"');
     } finally {
       await fs.rm(tempRoot, { recursive: true, force: true });

@@ -30,7 +30,7 @@ export function createCliLoginUrl({
 }
 
 function html(message: string) {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>VibeShip CLI</title></head><body><main style="font-family: system-ui, sans-serif; max-width: 42rem; margin: 4rem auto;"><h1>${message}</h1><p>You can return to your terminal.</p></main></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Varel CLI</title></head><body><main style="font-family: system-ui, sans-serif; max-width: 42rem; margin: 4rem auto;"><h1>${message}</h1><p>You can return to your terminal.</p></main></body></html>`;
 }
 
 function writeHtml(
@@ -65,12 +65,12 @@ export async function startBrowserLogin({
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
 
     if (requestUrl.pathname !== "/callback") {
-      writeHtml(response, 404, "Unknown VibeShip CLI callback");
+      writeHtml(response, 404, "Unknown Varel CLI callback");
       return;
     }
 
     if (requestUrl.searchParams.get("state") !== state) {
-      writeHtml(response, 400, "Invalid VibeShip CLI login state");
+      writeHtml(response, 400, "Invalid Varel CLI login state");
       settle?.reject(new Error("CLI login returned an invalid state."));
       return;
     }
@@ -78,12 +78,12 @@ export async function startBrowserLogin({
     const token = requestUrl.searchParams.get("token");
 
     if (!token) {
-      writeHtml(response, 400, "VibeShip CLI login did not return a token");
+      writeHtml(response, 400, "Varel CLI login did not return a token");
       settle?.reject(new Error("CLI login did not return a token."));
       return;
     }
 
-    writeHtml(response, 200, "VibeShip CLI login complete");
+    writeHtml(response, 200, "Varel CLI login complete");
     settle?.resolve({
       token,
       email: requestUrl.searchParams.get("email") ?? undefined,

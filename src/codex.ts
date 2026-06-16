@@ -10,9 +10,9 @@ export function hyperdriveCodexConfig({
 }: {
   mcpUrl: string;
 }) {
-  return `[mcp_servers.vibeship-hyperdrive]
+  return `[mcp_servers.varel-hyperdrive]
 url = "${mcpUrl}"
-bearer_token_env_var = "VIBESHIP_HYPERDRIVE_TOKEN"
+bearer_token_env_var = "VAREL_HYPERDRIVE_TOKEN"
 default_tools_approval_mode = "prompt"
 `;
 }
@@ -27,10 +27,10 @@ export function installHyperdriveCodexConfig({
   const file = projectCodexConfigPath(projectDir);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-  const marker = "[mcp_servers.vibeship-hyperdrive]";
+  const marker = "[mcp_servers.varel-hyperdrive]";
   const next = existing.includes(marker)
     ? existing.replace(
-        /\[mcp_servers\.vibeship-hyperdrive\][\s\S]*?(?=\n\[|$)/,
+        /\[mcp_servers\.varel-hyperdrive\][\s\S]*?(?=\n\[|$)/,
         hyperdriveCodexConfig({ mcpUrl }).trimEnd(),
       )
     : `${existing.trimEnd()}${existing.trim() ? "\n\n" : ""}${hyperdriveCodexConfig({

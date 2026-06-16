@@ -102,13 +102,13 @@ export function writeProjectSetupConfig({
   projectDir: string;
   setup: SetupConfig;
 }) {
-  const vibeshipDir = path.join(projectDir, ".vibeship");
-  const marker = path.join(vibeshipDir, "project.json");
+  const varelDir = path.join(projectDir, ".varel");
+  const marker = path.join(varelDir, "project.json");
   const existing = fs.existsSync(marker)
     ? JSON.parse(fs.readFileSync(marker, "utf8"))
     : {};
 
-  fs.mkdirSync(vibeshipDir, { recursive: true });
+  fs.mkdirSync(varelDir, { recursive: true });
   fs.writeFileSync(
     marker,
     `${JSON.stringify({ ...existing, setup }, null, 2)}\n`,

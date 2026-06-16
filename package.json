@@ -1,21 +1,21 @@
 {
-  "name": "@vibeshiphq/cli",
+  "name": "@varelhq/cli",
   "version": "0.2.2",
-  "description": "VibeShip CLI for starter initialization and Hyperdrive setup.",
+  "description": "Varel CLI for core initialization and Hyperdrive setup.",
   "type": "module",
   "license": "UNLICENSED",
-  "homepage": "https://www.vibeship.today",
+  "homepage": "https://www.varel.dev",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/vibeshiphq/vibeship-cli.git"
+    "url": "git+ssh://git@github.com/varelhq/varel-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/vibeshiphq/vibeship-cli/issues"
+    "url": "https://github.com/varelhq/varel-cli/issues"
   },
   "keywords": [
-    "vibeship",
+    "varel",
     "cli",
-    "starter",
+    "core",
     "codex",
     "mcp"
   ],
@@ -23,7 +23,7 @@
   "main": "dist/index.js",
   "exports": "./dist/index.js",
   "bin": {
-    "vibeship": "dist/index.js"
+    "varel": "dist/index.js"
   },
   "files": [
     "dist",

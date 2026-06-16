@@ -29,8 +29,8 @@ import {
 } from "./project-config.js";
 import { line, renderDone, renderInfo } from "./ui.js";
 
-const STARTER_REPO_SSH = "git@github.com:vibeshiphq/vibeship-starter.git";
-const STARTER_REPO_HTTPS = "https://github.com/vibeshiphq/vibeship-starter.git";
+const CORE_REPO_SSH = "git@github.com:varelhq/varel-core.git";
+const CORE_REPO_HTTPS = "https://github.com/varelhq/varel-core.git";
 
 type CloneSource = {
   label: string;
@@ -41,17 +41,17 @@ type CloneFailure = CloneSource & {
   message: string;
 };
 
-export function starterCloneSources(overrideUrl?: string): CloneSource[] {
+export function coreCloneSources(overrideUrl?: string): CloneSource[] {
   const configured =
-    overrideUrl ?? process.env.VIBESHIP_STARTER_REPO_URL?.trim();
+    overrideUrl ?? process.env.VAREL_CORE_REPO_URL?.trim();
 
   if (configured) {
     return [{ label: "custom", url: configured }];
   }
 
   return [
-    { label: "ssh", url: STARTER_REPO_SSH },
-    { label: "https", url: STARTER_REPO_HTTPS },
+    { label: "ssh", url: CORE_REPO_SSH },
+    { label: "https", url: CORE_REPO_HTTPS },
   ];
 }
 
@@ -63,18 +63,18 @@ function cloneErrorMessage(error: unknown) {
   return String(error);
 }
 
-export function starterCloneRecoveryActions(failures: CloneFailure[]) {
+export function coreCloneRecoveryActions(failures: CloneFailure[]) {
   const attempted = failures
     .map((failure) => `${failure.label}: ${failure.url}`)
     .join("; ");
 
   return [
     `Clone attempts failed (${attempted}).`,
-    "Open the Polar customer portal from VibeShip and confirm the GitHub repository access benefit is connected to the right GitHub account.",
-    "Confirm that account can access vibeshiphq/vibeship-starter in GitHub.",
+    "Open the Polar customer portal from Varel and confirm the GitHub repository access benefit is connected to the right GitHub account.",
+    "Confirm that account can access varelhq/varel-core in GitHub.",
     "For SSH, run `ssh -T git@github.com` and confirm your key is accepted.",
     "For HTTPS, run `gh auth status` or sign in to GitHub in your credential manager.",
-    "If access was just granted, wait a minute and rerun `vibeship init`.",
+    "If access was just granted, wait a minute and rerun `varel init`.",
   ];
 }
 
@@ -115,7 +115,7 @@ async function commandLogin(options: {
       },
     });
     renderDone("Logged in", [
-      line("config", "~/.vibeship/config.json"),
+      line("config", "~/.varel/config.json"),
       line("api", apiUrl),
       line("email", result.email ?? options.email ?? "unknown"),
       line("expires", result.expiresAt ?? "unknown", "muted"),
@@ -132,7 +132,7 @@ async function commandLogin(options: {
     },
   });
   renderDone("Logged in", [
-    line("config", "~/.vibeship/config.json"),
+    line("config", "~/.varel/config.json"),
     line("api", apiUrl),
   ]);
 }
@@ -148,7 +148,7 @@ async function commandWhoami(options: { apiUrl?: string } = {}) {
   renderDone("Account", [
     line("email", status.email ?? auth.email ?? "unknown"),
     line("api", apiUrl, "muted"),
-    line("starter", status.starterAccess ? "ready" : "missing", status.starterAccess ? "success" : "warning"),
+    line("core", status.coreAccess ? "ready" : "missing", status.coreAccess ? "success" : "warning"),
     line("hyperdrive", status.hyperdriveActive ? "active" : "inactive", status.hyperdriveActive ? "success" : "warning"),
   ]);
 }
@@ -156,7 +156,7 @@ async function commandWhoami(options: { apiUrl?: string } = {}) {
 async function commandDoctor(options: { projectDir?: string; apiUrl?: string }) {
   const config = readConfig();
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
-  const marker = path.join(projectDir, ".vibeship", "project.json");
+  const marker = path.join(projectDir, ".varel", "project.json");
   const codexConfig = path.join(projectDir, ".codex", "config.toml");
   const hasAuth = Boolean(config.auth?.token);
   const hasProject = fs.existsSync(marker);
@@ -167,33 +167,33 @@ async function commandDoctor(options: { projectDir?: string; apiUrl?: string }) 
     [
       line("auth", hasAuth ? "present" : "missing", hasAuth ? "success" : "warning"),
       line("api", options.apiUrl ?? config.apiUrl ?? defaultApiUrl(), "muted"),
-      line("project", hasProject ? "vibeship starter" : "not detected", hasProject ? "success" : "warning"),
+      line("project", hasProject ? "varel core" : "not detected", hasProject ? "success" : "warning"),
       line("hyperdrive config", hasHyperdriveConfig ? codexConfig : "not installed", hasHyperdriveConfig ? "success" : "warning"),
     ],
     doctorActions({ hasAuth, hasProject, hasHyperdriveConfig, projectDir }),
   );
 }
 
-async function cloneStarter({
+async function cloneCore({
   targetDir,
-  localStarter,
+  localCore,
   repoUrl,
 }: {
   targetDir: string;
-  localStarter?: string;
+  localCore?: string;
   repoUrl?: string;
 }) {
   if (fs.existsSync(targetDir) && fs.readdirSync(targetDir).length > 0) {
     throw new Error(`${targetDir} already exists and is not empty.`);
   }
 
-  if (localStarter) {
-    await execa("cp", ["-R", `${path.resolve(localStarter)}/.`, targetDir]);
+  if (localCore) {
+    await execa("cp", ["-R", `${path.resolve(localCore)}/.`, targetDir]);
     return;
   }
 
   const failures: CloneFailure[] = [];
-  for (const source of starterCloneSources(repoUrl)) {
+  for (const source of coreCloneSources(repoUrl)) {
     try {
       await execa("git", ["clone", source.url, targetDir]);
       return;
@@ -205,8 +205,8 @@ async function cloneStarter({
 
   throw new Error(
     [
-      "Could not clone the VibeShip starter after entitlement approval.",
-      ...starterCloneRecoveryActions(failures),
+      "Could not clone the Varel core after entitlement approval.",
+      ...coreCloneRecoveryActions(failures),
       "Raw git errors:",
       ...failures.map(
         (failure) => `- ${failure.label}: ${failure.message.slice(0, 500)}`,
@@ -284,7 +284,7 @@ export async function resolveInitSetupConfig(options: {
 async function commandInit(options: {
   targetDir?: string;
   dir?: string;
-  localStarter?: string;
+  localCore?: string;
   repoUrl?: string;
   skipInstall?: boolean;
   apiUrl?: string;
@@ -299,22 +299,22 @@ async function commandInit(options: {
     auth,
   });
 
-  if (!status.starterAccess) {
-    throw new Error("This account does not have VibeShip starter access.");
+  if (!status.coreAccess) {
+    throw new Error("This account does not have Varel core access.");
   }
 
-  const targetDir = path.resolve(options.dir ?? options.targetDir ?? "vibeship-app");
+  const targetDir = path.resolve(options.dir ?? options.targetDir ?? "varel-app");
   const setup = await resolveInitSetupConfig({
     workflow: options.workflow,
     integrations: options.integrations,
   });
-  renderInfo("Initializing starter", [
+  renderInfo("Initializing core", [
     line("directory", targetDir),
     line(
       "source",
-      options.localStarter
-        ? path.resolve(options.localStarter)
-        : starterCloneSources(options.repoUrl)
+      options.localCore
+        ? path.resolve(options.localCore)
+        : coreCloneSources(options.repoUrl)
             .map((source) => source.url)
             .join(" then "),
     ),
@@ -323,9 +323,9 @@ async function commandInit(options: {
     line("environments", setup.environments.join(", ")),
   ]);
 
-  await cloneStarter({
+  await cloneCore({
     targetDir,
-    localStarter: options.localStarter,
+    localCore: options.localCore,
     repoUrl: options.repoUrl,
   });
 
@@ -336,9 +336,9 @@ async function commandInit(options: {
   }
 
   renderDone(
-    "Starter initialized",
+    "Core initialized",
     [line("directory", targetDir)],
-    [`cd ${targetDir}`, "vibeship hyperdrive install"],
+    [`cd ${targetDir}`, "varel hyperdrive install"],
   );
 }
 
@@ -356,7 +356,7 @@ async function commandHyperdriveInstall(options: {
   });
 
   if (!status.hyperdriveActive) {
-    throw new Error("This account does not have an active or trialing VibeShip Hyperdrive subscription.");
+    throw new Error("This account does not have an active or trialing Varel Hyperdrive subscription.");
   }
 
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
@@ -371,8 +371,8 @@ async function commandHyperdriveInstall(options: {
       line("mcp", mcpUrl),
     ],
     [
-      "export VIBESHIP_HYPERDRIVE_TOKEN=$(vibeship whoami --token-only)",
-      "Open Codex in this project and use VibeShip Hyperdrive.",
+      "export VAREL_HYPERDRIVE_TOKEN=$(varel whoami --token-only)",
+      "Open Codex in this project and use Varel Hyperdrive.",
     ],
   );
 }
@@ -427,8 +427,8 @@ async function commandHyperdriveStatus(options: {
 export async function run(argv: string[]) {
   const program = new Command();
   program
-    .name("vibeship")
-    .description("Initialize VibeShip starter apps and install VibeShip Hyperdrive.")
+    .name("varel")
+    .description("Initialize Varel core apps and install Varel Hyperdrive.")
     .version("0.2.2")
     .showHelpAfterError()
     .showSuggestionAfterError()
@@ -437,38 +437,38 @@ export async function run(argv: string[]) {
       "after",
       `
 Examples:
-  $ vibeship login
-  $ vibeship init my-app
-  $ vibeship init my-app --workflow local-first --integrations clerk,convex,polar,resend,vercel
-  $ vibeship hyperdrive install --project-dir ./my-app
-  $ vibeship doctor
+  $ varel login
+  $ varel init my-app
+  $ varel init my-app --workflow local-first --integrations clerk,convex,polar,resend,vercel
+  $ varel hyperdrive install --project-dir ./my-app
+  $ varel doctor
 
 Environment:
-  VIBESHIP_API_URL            Override the VibeShip API URL.
-  VIBESHIP_HYPERDRIVE_MCP_URL      Override the Hyperdrive MCP URL.
-  VIBESHIP_STARTER_REPO_URL   Override the starter repository clone URL.
-  VIBESHIP_CLI_OFFLINE=1      Use local entitlement fixtures for development.
+  VAREL_API_URL            Override the Varel API URL.
+  VAREL_HYPERDRIVE_MCP_URL      Override the Hyperdrive MCP URL.
+  VAREL_CORE_REPO_URL   Override the core repository clone URL.
+  VAREL_CLI_OFFLINE=1      Use local entitlement fixtures for development.
 `,
     );
 
   program
     .command("login")
-    .description("Authenticate this machine with VibeShip.")
-    .option("--token <token>", "CLI token issued by VibeShip")
+    .description("Authenticate this machine with Varel.")
+    .option("--token <token>", "CLI token issued by Varel")
     .option("--email <email>", "Email to store with a development token")
-    .option("--api-url <url>", "VibeShip API URL")
+    .option("--api-url <url>", "Varel API URL")
     .action(commandLogin);
 
   program.command("logout").action(() => {
     clearAuth();
-    renderDone("Logged out", [line("config", "~/.vibeship/config.json")]);
+    renderDone("Logged out", [line("config", "~/.varel/config.json")]);
   });
 
   program
     .command("whoami")
-    .description("Show the current VibeShip account and entitlement status.")
+    .description("Show the current Varel account and entitlement status.")
     .option("--token-only", "Print the stored CLI token only")
-    .option("--api-url <url>", "VibeShip API URL")
+    .option("--api-url <url>", "Varel API URL")
     .action((options: { tokenOnly?: boolean; apiUrl?: string }) => {
       if (options.tokenOnly) {
         process.stdout.write(`${requireAuth(readConfig()).token}\n`);
@@ -482,17 +482,17 @@ Environment:
     .command("doctor")
     .description("Inspect auth, project, and Hyperdrive config for this directory.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
-    .option("--api-url <url>", "VibeShip API URL")
+    .option("--api-url <url>", "Varel API URL")
     .action(commandDoctor);
 
   program
     .command("init [targetDir]")
-    .description("Clone the private starter into a new app directory.")
+    .description("Clone the private core into a new app directory.")
     .option("--dir <dir>", "Target directory")
-    .option("--local-starter <dir>", "Use a local starter checkout")
-    .option("--repo-url <url>", "Override the starter repository clone URL")
+    .option("--local-core <dir>", "Use a local core checkout")
+    .option("--repo-url <url>", "Override the core repository clone URL")
     .option("--skip-install", "Skip pnpm install")
-    .option("--api-url <url>", "VibeShip API URL")
+    .option("--api-url <url>", "Varel API URL")
     .option("--workflow <workflow>", "Setup workflow: local-first or launch-ready")
     .option(
       "--integrations <list>",
@@ -502,19 +502,19 @@ Environment:
       commandInit({ ...options, targetDir }),
     );
 
-  const hyperdrive = program.command("hyperdrive").description("Manage VibeShip Hyperdrive setup.");
+  const hyperdrive = program.command("hyperdrive").description("Manage Varel Hyperdrive setup.");
   hyperdrive
     .command("install")
     .description("Install Hyperdrive MCP config into a Codex project.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
     .option("--mcp-url <url>", "Hyperdrive MCP URL")
-    .option("--api-url <url>", "VibeShip API URL")
+    .option("--api-url <url>", "Varel API URL")
     .action(commandHyperdriveInstall);
   hyperdrive
     .command("status")
     .description("Show Hyperdrive subscription and project config status.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
-    .option("--api-url <url>", "VibeShip API URL")
+    .option("--api-url <url>", "Varel API URL")
     .option("--mcp-url <url>", "Hyperdrive MCP URL")
     .action(commandHyperdriveStatus);
 
@@ -545,18 +545,18 @@ function doctorActions({
   const actions: string[] = [];
 
   if (!hasAuth) {
-    actions.push("vibeship login");
+    actions.push("varel login");
   }
 
   if (!hasProject) {
-    actions.push("Run from a starter app, or create one with vibeship init my-app.");
+    actions.push("Run from a core app, or create one with varel init my-app.");
   }
 
   if (!hasHyperdriveConfig) {
     actions.push(
       projectDir === process.cwd()
-        ? "vibeship hyperdrive install"
-        : `vibeship hyperdrive install --project-dir ${projectDir}`,
+        ? "varel hyperdrive install"
+        : `varel hyperdrive install --project-dir ${projectDir}`,
     );
   }
 

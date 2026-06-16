@@ -10,7 +10,7 @@ describe("Hyperdrive MCP API", () => {
 
       return Response.json({
         jsonrpc: "2.0",
-        id: "vibeship-cli-status",
+        id: "varel-cli-status",
         result: {
           structuredContent: {
             authenticated: true,
@@ -21,7 +21,7 @@ describe("Hyperdrive MCP API", () => {
             tokenExpiresAt: "2026-06-10T00:00:00.000Z",
             subscriptionStatus: "active",
             server: {
-              name: "vibeship-hyperdrive",
+              name: "varel-hyperdrive",
               version: "0.3.1",
               protocolVersion: "2025-06-18",
               authority: "guidance-only",
@@ -35,35 +35,35 @@ describe("Hyperdrive MCP API", () => {
 
     await expect(
       fetchHyperdriveMcpStatus({
-        mcpUrl: "https://hyperdrive.vibeship.today/mcp",
+        mcpUrl: "https://hyperdrive.varel.dev/mcp",
         auth: { token: "cli-token" },
         fetchImpl,
       }),
     ).resolves.toMatchObject({
       authenticated: true,
-      server: { name: "vibeship-hyperdrive", version: "0.3.1" },
+      server: { name: "varel-hyperdrive", version: "0.3.1" },
     });
 
-    expect(String(requests[0]?.input)).toBe("https://hyperdrive.vibeship.today/mcp");
+    expect(String(requests[0]?.input)).toBe("https://hyperdrive.varel.dev/mcp");
     expect(requests[0]?.init?.headers).toMatchObject({
       authorization: "Bearer cli-token",
       "content-type": "application/json",
     });
     expect(JSON.parse(String(requests[0]?.init?.body))).toMatchObject({
       method: "tools/call",
-      params: { name: "vibeship_hyperdrive_status" },
+      params: { name: "varel_hyperdrive_status" },
     });
   });
 
   it("surfaces JSON-RPC errors", async () => {
     await expect(
       fetchHyperdriveMcpStatus({
-        mcpUrl: "https://hyperdrive.vibeship.today/mcp",
+        mcpUrl: "https://hyperdrive.varel.dev/mcp",
         auth: { token: "cli-token" },
         fetchImpl: async () =>
           Response.json({
             jsonrpc: "2.0",
-            id: "vibeship-cli-status",
+            id: "varel-cli-status",
             error: { code: -32029, message: "rate limit storage missing" },
           }),
       }),

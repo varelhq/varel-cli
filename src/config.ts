@@ -26,7 +26,7 @@ const configSchema = z.object({
 });
 
 export function configDir() {
-  return path.join(os.homedir(), ".vibeship");
+  return path.join(os.homedir(), ".varel");
 }
 
 export function configPath() {
@@ -57,24 +57,24 @@ export function clearAuth() {
 
 export function requireAuth(config = readConfig()): AuthState {
   if (!config.auth?.token) {
-    throw new Error("Run `vibeship login` before using this command.");
+    throw new Error("Run `varel login` before using this command.");
   }
 
   return config.auth;
 }
 
 export function defaultApiUrl() {
-  if (process.env.VIBESHIP_API_URL) {
-    return process.env.VIBESHIP_API_URL;
+  if (process.env.VAREL_API_URL) {
+    return process.env.VAREL_API_URL;
   }
 
   if (process.env.npm_lifecycle_event === "dev") {
     return "http://localhost:3000";
   }
 
-  return "https://www.vibeship.today";
+  return "https://www.varel.dev";
 }
 
 export function defaultHyperdriveMcpUrl() {
-  return process.env.VIBESHIP_HYPERDRIVE_MCP_URL ?? "https://hyperdrive.vibeship.today/mcp";
+  return process.env.VAREL_HYPERDRIVE_MCP_URL ?? "https://hyperdrive.varel.dev/mcp";
 }

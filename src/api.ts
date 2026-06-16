@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export type EntitlementStatus = {
   email?: string;
-  starterAccess: boolean;
+  coreAccess: boolean;
   hyperdriveActive: boolean;
   entitlements: string[];
 };
@@ -39,12 +39,12 @@ export async function fetchEntitlements({
   apiUrl: string;
   auth: AuthState;
 }): Promise<EntitlementStatus> {
-  if (process.env.VIBESHIP_CLI_OFFLINE === "1") {
+  if (process.env.VAREL_CLI_OFFLINE === "1") {
     return {
       email: auth.email,
-      starterAccess: true,
+      coreAccess: true,
       hyperdriveActive: true,
-      entitlements: ["license:starter", "hyperdrive:active"],
+      entitlements: ["license:core", "hyperdrive:active"],
     };
   }
 
@@ -62,7 +62,7 @@ export async function fetchEntitlements({
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Could not reach VibeShip at ${url.origin}: ${message}`);
+    throw new Error(`Could not reach Varel at ${url.origin}: ${message}`);
   }
 
   if (!response.ok) {
@@ -98,10 +98,10 @@ export async function fetchHyperdriveMcpStatus({
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
-        id: "vibeship-cli-status",
+        id: "varel-cli-status",
         method: "tools/call",
         params: {
-          name: "vibeship_hyperdrive_status",
+          name: "varel_hyperdrive_status",
           arguments: {},
         },
       }),

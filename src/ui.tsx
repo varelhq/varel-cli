@@ -37,7 +37,7 @@ export function Logo({ subtitle }: { subtitle?: string }) {
   return (
     <Box flexDirection="column">
       <Text color="cyanBright" bold>
-        VibeShip
+        Varel
       </Text>
       {subtitle ? <Text color="gray">{subtitle}</Text> : null}
     </Box>

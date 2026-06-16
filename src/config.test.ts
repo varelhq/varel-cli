@@ -7,9 +7,9 @@ describe("defaults", () => {
     vi.unstubAllEnvs();
   });
 
-  it("uses production VibeShip endpoints by default", () => {
-    expect(defaultApiUrl()).toBe("https://www.vibeship.today");
-    expect(defaultHyperdriveMcpUrl()).toBe("https://hyperdrive.vibeship.today/mcp");
+  it("uses production Varel endpoints by default", () => {
+    expect(defaultApiUrl()).toBe("https://www.varel.dev");
+    expect(defaultHyperdriveMcpUrl()).toBe("https://hyperdrive.varel.dev/mcp");
   });
 
   it("uses the local internal app while developing the CLI", () => {
