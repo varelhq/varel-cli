@@ -22,7 +22,7 @@ function recoveryActions(message: string) {
 
   if (message.includes("Hyperdrive subscription")) {
     return [
-      "Confirm this account has an active Hyperdrive subscription at https://www.vibeship.today.",
+      "Confirm this account has an active or trialing Hyperdrive subscription at https://www.vibeship.today.",
       "Then run vibeship login again.",
     ];
   }

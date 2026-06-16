@@ -22,7 +22,7 @@ describe("Hyperdrive MCP API", () => {
             subscriptionStatus: "active",
             server: {
               name: "vibeship-hyperdrive",
-              version: "0.3.0",
+              version: "0.3.1",
               protocolVersion: "2025-06-18",
               authority: "guidance-only",
             },
@@ -41,7 +41,7 @@ describe("Hyperdrive MCP API", () => {
       }),
     ).resolves.toMatchObject({
       authenticated: true,
-      server: { name: "vibeship-hyperdrive", version: "0.3.0" },
+      server: { name: "vibeship-hyperdrive", version: "0.3.1" },
     });
 
     expect(String(requests[0]?.input)).toBe("https://hyperdrive.vibeship.today/mcp");

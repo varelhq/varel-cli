@@ -356,7 +356,7 @@ async function commandHyperdriveInstall(options: {
   });
 
   if (!status.hyperdriveActive) {
-    throw new Error("This account does not have an active VibeShip Hyperdrive subscription.");
+    throw new Error("This account does not have an active or trialing VibeShip Hyperdrive subscription.");
   }
 
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
@@ -429,7 +429,7 @@ export async function run(argv: string[]) {
   program
     .name("vibeship")
     .description("Initialize VibeShip starter apps and install VibeShip Hyperdrive.")
-    .version("0.2.1")
+    .version("0.2.2")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })

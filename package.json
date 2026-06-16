@@ -1,6 +1,6 @@
 {
   "name": "@vibeshiphq/cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "VibeShip CLI for starter initialization and Hyperdrive setup.",
   "type": "module",
   "license": "UNLICENSED",
