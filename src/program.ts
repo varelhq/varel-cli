@@ -15,7 +15,11 @@ import {
   requireAuth,
   writeConfig,
 } from "./config.js";
-import { installHyperdriveCodexConfig } from "./codex.js";
+import {
+  installHyperdriveUserCodexConfig,
+  removeHyperdriveProjectCodexConfig,
+  userCodexConfigPath,
+} from "./codex.js";
 import { startBrowserLogin } from "./login.js";
 import {
   parseIntegrations,
@@ -361,19 +365,49 @@ async function commandHyperdriveInstall(options: {
 
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
   const mcpUrl = options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
-  const file = installHyperdriveCodexConfig({ projectDir, mcpUrl });
+  const projectCleanup = removeHyperdriveProjectCodexConfig(projectDir);
+  const userConfig = installHyperdriveUserCodexConfig({
+    mcpUrl,
+    token: auth.token,
+  });
+  const details = [
+    line("project", projectDir),
+    line("user auth config", userConfig),
+    line(
+      "project override",
+      projectCleanup.removed ? `removed stale ${projectCleanup.file}` : "none",
+      projectCleanup.removed ? "success" : "muted",
+    ),
+    line("mcp", mcpUrl),
+  ];
+  const actions = [
+    "Restart or reopen Codex so the authenticated Hyperdrive MCP tools reload.",
+    "Open Codex in this project and start provider work with varel_hyperdrive_task_impact.",
+  ];
+
+  try {
+    const hyperdriveStatus = await fetchHyperdriveMcpStatus({ mcpUrl, auth });
+    details.push(
+      line(
+        "mcp smoke",
+        hyperdriveStatus.authenticated
+          ? `${hyperdriveStatus.server.name}@${hyperdriveStatus.server.version} accepted auth`
+          : `rejected: ${hyperdriveStatus.reason ?? "unknown"}`,
+        hyperdriveStatus.authenticated ? "success" : "warning",
+      ),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    details.push(line("mcp smoke", message.slice(0, 140), "warning"));
+    actions.unshift(
+      "Run `varel hyperdrive status` before restarting Codex; if MCP auth is rejected, hosted Hyperdrive or provider env needs attention.",
+    );
+  }
 
   renderDone(
     "Hyperdrive installed",
-    [
-      line("project", projectDir),
-      line("config", file),
-      line("mcp", mcpUrl),
-    ],
-    [
-      "export VAREL_HYPERDRIVE_TOKEN=$(varel whoami --token-only)",
-      "Open Codex in this project and use Varel Hyperdrive.",
-    ],
+    details,
+    actions,
   );
 }
 
@@ -390,13 +424,13 @@ async function commandHyperdriveStatus(options: {
     auth,
   });
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
-  const codexConfig = path.join(projectDir, ".codex", "config.toml");
-  const hasHyperdriveConfig = fs.existsSync(codexConfig);
+  const userConfig = userCodexConfigPath();
+  const hasHyperdriveConfig = fs.existsSync(userConfig);
   const mcpUrl = options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
   const details = [
     line("subscription", status.hyperdriveActive ? "active" : "inactive", status.hyperdriveActive ? "success" : "warning"),
     line("project", projectDir),
-    line("config", hasHyperdriveConfig ? codexConfig : "missing", hasHyperdriveConfig ? "success" : "warning"),
+    line("user auth config", hasHyperdriveConfig ? userConfig : "missing", hasHyperdriveConfig ? "success" : "warning"),
     line("mcp", mcpUrl, "muted"),
   ];
 
@@ -429,7 +463,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.2")
+    .version("0.2.3")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })

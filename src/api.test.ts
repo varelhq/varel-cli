@@ -22,7 +22,7 @@ describe("Hyperdrive MCP API", () => {
             subscriptionStatus: "active",
             server: {
               name: "varel-hyperdrive",
-              version: "0.3.1",
+              version: "0.3.2",
               protocolVersion: "2025-06-18",
               authority: "guidance-only",
             },
@@ -41,7 +41,7 @@ describe("Hyperdrive MCP API", () => {
       }),
     ).resolves.toMatchObject({
       authenticated: true,
-      server: { name: "varel-hyperdrive", version: "0.3.1" },
+      server: { name: "varel-hyperdrive", version: "0.3.2" },
     });
 
     expect(String(requests[0]?.input)).toBe("https://hyperdrive.varel.dev/mcp");
