@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { execa } from "execa";
 import open from "open";
 
@@ -348,6 +348,7 @@ async function commandInit(options: {
 
 async function commandHyperdriveInstall(options: {
   projectDir?: string;
+  hyperdriveUrl?: string;
   mcpUrl?: string;
   apiUrl?: string;
 }) {
@@ -364,43 +365,38 @@ async function commandHyperdriveInstall(options: {
   }
 
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
-  const mcpUrl = options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
+  const mcpUrl =
+    options.hyperdriveUrl ?? options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
   const projectCleanup = removeHyperdriveProjectCodexConfig(projectDir);
-  const userConfig = installHyperdriveUserCodexConfig({
+  installHyperdriveUserCodexConfig({
     mcpUrl,
     token: auth.token,
   });
   const details = [
     line("project", projectDir),
-    line("user auth config", userConfig),
-    line(
-      "project override",
-      projectCleanup.removed ? `removed stale ${projectCleanup.file}` : "none",
-      projectCleanup.removed ? "success" : "muted",
-    ),
-    line("mcp", mcpUrl),
+    line("editor", "configured", "success"),
   ];
-  const actions = [
-    "Restart or reopen Codex so the authenticated Hyperdrive MCP tools reload.",
-    "Open Codex in this project and start provider work with varel_hyperdrive_task_impact.",
-  ];
+  if (projectCleanup.removed) {
+    details.push(line("cleanup", "removed old project settings", "success"));
+  }
+  const actions = hyperdriveInstallNextSteps();
 
   try {
     const hyperdriveStatus = await fetchHyperdriveMcpStatus({ mcpUrl, auth });
     details.push(
       line(
-        "mcp smoke",
+        "hyperdrive",
         hyperdriveStatus.authenticated
-          ? `${hyperdriveStatus.server.name}@${hyperdriveStatus.server.version} accepted auth`
+          ? "ready"
           : `rejected: ${hyperdriveStatus.reason ?? "unknown"}`,
         hyperdriveStatus.authenticated ? "success" : "warning",
       ),
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    details.push(line("mcp smoke", message.slice(0, 140), "warning"));
+    details.push(line("hyperdrive", "installed; connection check needs attention", "warning"));
     actions.unshift(
-      "Run `varel hyperdrive status` before restarting Codex; if MCP auth is rejected, hosted Hyperdrive or provider env needs attention.",
+      `Run \`varel hyperdrive status\` to check the connection: ${message.slice(0, 100)}`,
     );
   }
 
@@ -411,8 +407,16 @@ async function commandHyperdriveInstall(options: {
   );
 }
 
+export function hyperdriveInstallNextSteps(): string[] {
+  return [
+    "Reopen your editor so Hyperdrive loads for this project.",
+    "Continue setup from this directory.",
+  ];
+}
+
 async function commandHyperdriveStatus(options: {
   projectDir?: string;
+  hyperdriveUrl?: string;
   apiUrl?: string;
   mcpUrl?: string;
 }) {
@@ -425,34 +429,37 @@ async function commandHyperdriveStatus(options: {
   });
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
   const userConfig = userCodexConfigPath();
-  const hasHyperdriveConfig = fs.existsSync(userConfig);
-  const mcpUrl = options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
+  const hasHyperdriveConfig =
+    fs.existsSync(userConfig) &&
+    fs.readFileSync(userConfig, "utf8").includes("varel-hyperdrive");
+  const mcpUrl =
+    options.hyperdriveUrl ?? options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
   const details = [
     line("subscription", status.hyperdriveActive ? "active" : "inactive", status.hyperdriveActive ? "success" : "warning"),
     line("project", projectDir),
-    line("user auth config", hasHyperdriveConfig ? userConfig : "missing", hasHyperdriveConfig ? "success" : "warning"),
-    line("mcp", mcpUrl, "muted"),
+    line("editor", hasHyperdriveConfig ? "configured" : "not configured", hasHyperdriveConfig ? "success" : "warning"),
+    line("service", mcpUrl, "muted"),
   ];
 
   try {
     const hyperdriveStatus = await fetchHyperdriveMcpStatus({ mcpUrl, auth });
     details.push(
       line(
-        "mcp auth",
+        "connection",
         hyperdriveStatus.authenticated
-          ? "accepted"
+          ? "ready"
           : `rejected: ${hyperdriveStatus.reason ?? "unknown"}`,
         hyperdriveStatus.authenticated ? "success" : "warning",
       ),
       line(
-        "server",
+        "version",
         `${hyperdriveStatus.server.name}@${hyperdriveStatus.server.version}`,
         "muted",
       ),
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    details.push(line("mcp check", message.slice(0, 140), "warning"));
+    details.push(line("connection", message.slice(0, 140), "warning"));
   }
 
   renderDone("Hyperdrive status", details);
@@ -463,7 +470,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.3")
+    .version("0.2.4")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
@@ -479,7 +486,7 @@ Examples:
 
 Environment:
   VAREL_API_URL            Override the Varel API URL.
-  VAREL_HYPERDRIVE_MCP_URL      Override the Hyperdrive MCP URL.
+  VAREL_HYPERDRIVE_MCP_URL Override the Hyperdrive service URL.
   VAREL_CORE_REPO_URL   Override the core repository clone URL.
   VAREL_CLI_OFFLINE=1      Use local entitlement fixtures for development.
 `,
@@ -539,17 +546,19 @@ Environment:
   const hyperdrive = program.command("hyperdrive").description("Manage Varel Hyperdrive setup.");
   hyperdrive
     .command("install")
-    .description("Install Hyperdrive MCP config into a Codex project.")
+    .description("Connect Hyperdrive to this project.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
-    .option("--mcp-url <url>", "Hyperdrive MCP URL")
+    .option("--hyperdrive-url <url>", "Hyperdrive service URL")
+    .addOption(new Option("--mcp-url <url>", "Hyperdrive service URL").hideHelp())
     .option("--api-url <url>", "Varel API URL")
     .action(commandHyperdriveInstall);
   hyperdrive
     .command("status")
-    .description("Show Hyperdrive subscription and project config status.")
+    .description("Show Hyperdrive subscription and connection status.")
     .option("--project-dir <dir>", "Project directory", process.cwd())
     .option("--api-url <url>", "Varel API URL")
-    .option("--mcp-url <url>", "Hyperdrive MCP URL")
+    .option("--hyperdrive-url <url>", "Hyperdrive service URL")
+    .addOption(new Option("--mcp-url <url>", "Hyperdrive service URL").hideHelp())
     .action(commandHyperdriveStatus);
 
   await program.parseAsync(normalizeArgv(argv));

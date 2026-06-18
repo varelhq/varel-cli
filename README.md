@@ -10,9 +10,9 @@ cd my-app
 varel hyperdrive install
 ```
 
-The CLI does not embed proprietary setup runbooks. It authenticates the user, checks core/Hyperdrive entitlement through Varel, clones the private core, and writes user-local Hyperdrive MCP auth into `~/.codex/config.toml`.
+The CLI authenticates the user, checks core and Hyperdrive access, clones the private core, and connects Hyperdrive to your local editor.
 
-After installing Hyperdrive, start broad provider work by asking the agent to call `varel_hyperdrive_task_impact` and the local `pnpm varel impact "<task>" --json` command. Those surfaces are lightweight reminders for affected providers and env propagation; live setup still uses the local Varel CLI plus official provider MCPs, CLIs, skills, or dashboards.
+After installing Hyperdrive, reopen your editor in the project and continue setup. Hyperdrive will guide provider setup, domain work, launch checks, and production readiness from inside the project.
 
 ## Commands
 
@@ -22,21 +22,17 @@ varel logout                   # Remove local CLI auth
 varel whoami                   # Show account and entitlement status
 varel doctor                   # Inspect auth, project, and Hyperdrive config
 varel init [targetDir]         # Clone the private core into a new app
-varel hyperdrive install   # Install authenticated Hyperdrive MCP config into ~/.codex/config.toml
-varel hyperdrive status    # Show Hyperdrive subscription, config, and MCP reachability
+varel hyperdrive install   # Connect Hyperdrive to your local editor
+varel hyperdrive status    # Show Hyperdrive subscription and connection status
 ```
 
 Configuration is stored at `~/.varel/config.json`. The default production API is `https://www.varel.dev`; override it with `VAREL_API_URL` or `--api-url` when dogfooding against a local internal app.
 
-Hyperdrive MCP defaults to `https://hyperdrive.varel.dev/mcp`; override it with
-`VAREL_HYPERDRIVE_MCP_URL` or `--mcp-url`. `varel hyperdrive status` calls Hyperdrive's
-`varel_hyperdrive_status` MCP tool with your stored CLI token and reports whether
-the server accepted the token. `varel hyperdrive install` writes the
-authenticated MCP header to the user-local Codex config and removes stale project
-Hyperdrive MCP overrides, so the Codex app can load Hyperdrive tools without a
-manual `VAREL_HYPERDRIVE_TOKEN` export. The install command also performs a
-hosted MCP smoke check so Cloudflare, Vercel env, or entitlement-service
-misconfiguration is visible before restarting Codex.
+Hyperdrive defaults to `https://hyperdrive.varel.dev/mcp`; override it with
+`VAREL_HYPERDRIVE_MCP_URL` or `--hyperdrive-url` when support asks you to test another
+endpoint. `varel hyperdrive install` writes authenticated user-local editor
+configuration and removes stale project overrides. `varel hyperdrive status`
+checks that your account and Hyperdrive connection are ready.
 
 `varel init` checks your Varel entitlement first, then tries to clone the private core over SSH and falls back to HTTPS. If GitHub access fails after entitlement approval, connect the Polar GitHub repository access benefit in the Varel customer portal, verify access to `varelhq/varel-core`, and rerun `varel init`. Support can provide `--repo-url` or `VAREL_CORE_REPO_URL` for temporary clone overrides.
 

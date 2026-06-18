@@ -1,6 +1,6 @@
 {
   "name": "@varel/cli",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Varel CLI for core initialization and Hyperdrive setup.",
   "type": "module",
   "license": "UNLICENSED",

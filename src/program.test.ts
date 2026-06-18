@@ -10,6 +10,7 @@ import {
   shouldPromptForSetup,
   coreCloneRecoveryActions,
   coreCloneSources,
+  hyperdriveInstallNextSteps,
 } from "./program.js";
 import { writeProjectSetupConfig } from "./project-config.js";
 
@@ -146,5 +147,12 @@ describe("program argv", () => {
     } finally {
       await fs.rm(tempRoot, { recursive: true, force: true });
     }
+  });
+
+  it("keeps Hyperdrive install next steps product-level", () => {
+    const text = hyperdriveInstallNextSteps().join("\n");
+
+    expect(text).toContain("Hyperdrive");
+    expect(text).not.toMatch(/Codex|MCP|varel_hyperdrive_|tool/i);
   });
 });
