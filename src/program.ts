@@ -255,7 +255,7 @@ async function promptForSetupConfig(): Promise<SetupConfig> {
         : "local-first";
     const defaultList = setupIntegrations
       .filter((integration) =>
-        ["clerk", "convex", "polar", "resend", "vercel"].includes(integration),
+        ["clerk", "convex", "polar", "sanity", "resend", "vercel"].includes(integration),
       )
       .join(",");
     const integrationsAnswer = await rl.question(
@@ -470,7 +470,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.4")
+    .version("0.2.5")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
@@ -480,7 +480,7 @@ export async function run(argv: string[]) {
 Examples:
   $ varel login
   $ varel init my-app
-  $ varel init my-app --workflow local-first --integrations clerk,convex,polar,resend,vercel
+  $ varel init my-app --workflow local-first --integrations clerk,convex,polar,sanity,resend,vercel
   $ varel hyperdrive install --project-dir ./my-app
   $ varel doctor
 

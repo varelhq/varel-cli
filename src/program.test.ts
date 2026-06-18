@@ -79,6 +79,7 @@ describe("program argv", () => {
         clerk: true,
         convex: true,
         polar: true,
+        sanity: true,
         resend: true,
         posthog: false,
         vercel: true,
@@ -91,13 +92,14 @@ describe("program argv", () => {
     await expect(
       resolveInitSetupConfig({
         workflow: "launch-ready",
-        integrations: "clerk,convex,polar,resend,vercel,posthog",
+        integrations: "clerk,convex,polar,sanity,resend,vercel,posthog",
       }),
     ).resolves.toMatchObject({
       workflow: "launch-ready",
       environments: ["development", "preview", "production"],
       integrations: {
         posthog: true,
+        sanity: true,
         calCom: false,
       },
     });
@@ -133,6 +135,7 @@ describe("program argv", () => {
             clerk: true,
             convex: true,
             polar: true,
+            sanity: true,
             resend: true,
             posthog: false,
             vercel: true,
