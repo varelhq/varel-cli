@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import readline from "node:readline/promises";
 
 import { Command, Option } from "commander";
 import { execa } from "execa";
@@ -22,6 +21,7 @@ import {
 } from "./codex.js";
 import { startBrowserLogin } from "./login.js";
 import {
+  defaultIntegrations,
   parseIntegrations,
   parseWorkflow,
   setupConfigForWorkflow,
@@ -29,9 +29,8 @@ import {
   writeProjectSetupConfig,
   type SetupConfig,
   type SetupIntegration,
-  type SetupWorkflow,
 } from "./project-config.js";
-import { line, renderDone, renderInfo } from "./ui.js";
+import { line, promptInitSetupWizard, renderDone, renderInfo } from "./ui.js";
 
 const CORE_REPO_SSH = "git@github.com:varelhq/varel-core.git";
 const CORE_REPO_HTTPS = "https://github.com/varelhq/varel-core.git";
@@ -235,39 +234,82 @@ export function shouldPromptForSetup(options: {
   );
 }
 
-function parseIntegrationAnswer(answer: string): SetupIntegration[] | undefined {
-  return parseIntegrations(answer.trim() || undefined);
-}
-
 async function promptForSetupConfig(): Promise<SetupConfig> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+  const defaults = defaultIntegrations();
+  const answer = await promptInitSetupWizard({
+    defaultWorkflow: "local-first",
+    workflows: [
+      {
+        value: "local-first",
+        label: "Local-first",
+        description: "Smallest setup surface for fast local development.",
+        tag: "recommended",
+      },
+      {
+        value: "launch-ready",
+        label: "Launch-ready",
+        description: "Includes preview and production environments up front.",
+      },
+    ],
+    integrations: setupIntegrations.map((integration) => ({
+      value: integration,
+      label: setupIntegrationLabel(integration),
+      description: setupIntegrationDescription(integration),
+      defaultSelected: defaults[integration],
+      tag: defaults[integration] ? "default" : undefined,
+    })),
   });
 
-  try {
-    const workflowAnswer = await rl.question(
-      "Setup workflow [1 local-first, 2 launch-ready] (1): ",
-    );
-    const workflow: SetupWorkflow =
-      workflowAnswer.trim() === "2" || workflowAnswer.trim() === "launch-ready"
-        ? "launch-ready"
-        : "local-first";
-    const defaultList = setupIntegrations
-      .filter((integration) =>
-        ["clerk", "convex", "polar", "sanity", "resend", "vercel"].includes(integration),
-      )
-      .join(",");
-    const integrationsAnswer = await rl.question(
-      `Enabled integrations (${defaultList}): `,
-    );
-    return setupConfigForWorkflow({
-      workflow,
-      integrations: parseIntegrationAnswer(integrationsAnswer) ?? undefined,
-    });
-  } finally {
-    rl.close();
-  }
+  return setupConfigForWorkflow({
+    workflow: parseWorkflow(answer.workflow),
+    integrations: parseIntegrations(answer.integrations.join(",")),
+  });
+}
+
+const setupIntegrationMeta: Record<
+  SetupIntegration,
+  { label: string; description: string }
+> = {
+  clerk: {
+    label: "Clerk",
+    description: "Identity, auth UI, and user session plumbing.",
+  },
+  convex: {
+    label: "Convex",
+    description: "Realtime app data, backend functions, and local dev sync.",
+  },
+  polar: {
+    label: "Polar",
+    description: "Payments, customer portal links, and entitlement checks.",
+  },
+  sanity: {
+    label: "Sanity",
+    description: "Structured content, Studio setup, and editorial workflow.",
+  },
+  resend: {
+    label: "Resend",
+    description: "Transactional email sending and local env placeholders.",
+  },
+  posthog: {
+    label: "PostHog",
+    description: "Product analytics, event capture, and launch telemetry.",
+  },
+  vercel: {
+    label: "Vercel",
+    description: "Hosting config, preview deploys, and production env slots.",
+  },
+  calCom: {
+    label: "Cal.com",
+    description: "Scheduling and booking integration scaffolding.",
+  },
+};
+
+function setupIntegrationLabel(integration: SetupIntegration) {
+  return setupIntegrationMeta[integration].label;
+}
+
+function setupIntegrationDescription(integration: SetupIntegration) {
+  return setupIntegrationMeta[integration].description;
 }
 
 export async function resolveInitSetupConfig(options: {
@@ -471,7 +513,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.5")
+    .version("0.2.6")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
