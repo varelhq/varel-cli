@@ -12,7 +12,7 @@ varel hyperdrive install
 
 The CLI authenticates the user, checks core and Hyperdrive access, clones the private core, and connects Hyperdrive to your local editor.
 
-After installing Hyperdrive, reopen your editor in the project and continue setup. Hyperdrive will guide provider setup, domain work, launch checks, and production readiness from inside the project.
+After installing Hyperdrive, reopen your editor in the project and start with Hyperdrive access bootstrap so provider sign-in, MFA, OAuth, and email verification are handled up front. Hyperdrive will then guide scoped provider setup, domain work, launch checks, and production readiness from inside the project.
 
 ## Commands
 
@@ -31,8 +31,9 @@ Configuration is stored at `~/.varel/config.json`. The default production API is
 Hyperdrive defaults to `https://hyperdrive.varel.dev/mcp`; override it with
 `VAREL_HYPERDRIVE_MCP_URL` or `--hyperdrive-url` when support asks you to test another
 endpoint. `varel hyperdrive install` writes authenticated user-local editor
-configuration and removes stale project overrides. `varel hyperdrive status`
-checks that your account and Hyperdrive connection are ready.
+configuration with auto-approved read-only Hyperdrive guidance calls and removes
+stale project overrides. `varel hyperdrive status` checks that your account and
+Hyperdrive connection are ready.
 
 `varel init` checks your Varel entitlement first, then tries to clone the private core over SSH and falls back to HTTPS. If GitHub access fails after entitlement approval, connect the Polar GitHub repository access benefit in the Varel customer portal, verify access to `varelhq/varel-core`, and rerun `varel init`. Support can provide `--repo-url` or `VAREL_CORE_REPO_URL` for temporary clone overrides.
 

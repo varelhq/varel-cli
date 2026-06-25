@@ -410,7 +410,8 @@ async function commandHyperdriveInstall(options: {
 export function hyperdriveInstallNextSteps(): string[] {
   return [
     "Reopen your editor so Hyperdrive loads for this project.",
-    "Continue setup from this directory.",
+    "Start with Hyperdrive access bootstrap so provider sign-in and MFA are handled before setup work.",
+    "Continue scoped provider setup from this directory.",
   ];
 }
 

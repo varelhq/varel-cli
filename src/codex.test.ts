@@ -22,7 +22,7 @@ describe("Codex Hyperdrive config", () => {
       .toMatchInlineSnapshot(`
         "[mcp_servers.varel-hyperdrive]
         url = "https://hyperdrive.varel.dev/mcp"
-        default_tools_approval_mode = "prompt"
+        default_tools_approval_mode = "approve"
         bearer_token_env_var = "VAREL_HYPERDRIVE_TOKEN"
         "
       `);
@@ -75,7 +75,7 @@ command = "npx"
 [mcp_servers.varel-hyperdrive]
 url = "https://hyperdrive.varel.dev/mcp"
 bearer_token_env_var = "VAREL_HYPERDRIVE_TOKEN"
-default_tools_approval_mode = "prompt"
+default_tools_approval_mode = "approve"
 `,
     );
 

@@ -27,7 +27,7 @@ Authorization = "Bearer ${tomlString(token)}"
 
   return `[mcp_servers.varel-hyperdrive]
 url = "${mcpUrl}"
-default_tools_approval_mode = "prompt"
+default_tools_approval_mode = "approve"
 ${auth}`;
 }
 
