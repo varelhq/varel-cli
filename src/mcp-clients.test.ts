@@ -152,9 +152,13 @@ describe("MCP client config", () => {
     const contents = fs.readFileSync(file, "utf8");
     expect(contents).toContain("TOKEN=\"$(varel whoami --token-only)\"");
     expect(contents).toContain(
+      "claude mcp remove --scope user varel-hyperdrive >/dev/null 2>&1 || true",
+    );
+    expect(contents).toContain(
       "claude mcp add --scope user --transport http varel-hyperdrive 'https://hyperdrive.varel.dev/mcp' --header",
     );
     expect(contents).toContain("\"Authorization: Bearer $TOKEN\"");
+    expect(contents).toContain("Claude Code is configured for Varel Hyperdrive.");
     expect(contents).not.toContain("stored-token");
     expect(fs.statSync(file).mode & 0o777).toBe(0o700);
   });

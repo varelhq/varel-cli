@@ -436,15 +436,15 @@ async function commandHyperdriveInstall(options: {
   });
   const details = [
     line("project", projectDir),
-    line("codex", `configured ${codexFile}`, "success"),
-    line("cursor", `configured ${cursorFile}`, "success"),
+    line("codex", `ready - restart Codex (${codexFile})`, "success"),
+    line("cursor", `ready - restart Cursor (${cursorFile})`, "success"),
     line(
       "claude code",
       claudeCode.status === "configured"
-        ? "configured"
+        ? "ready - restart Claude Code"
         : claudeCode.status === "not-found"
-          ? "not detected; fallback script written"
-          : "manual setup script written",
+          ? "not installed; fallback script available"
+          : "needs repair; fallback script available",
       claudeCode.status === "configured" ? "success" : "warning",
     ),
   ];
@@ -453,7 +453,10 @@ async function commandHyperdriveInstall(options: {
   }
   const actions = hyperdriveInstallNextSteps();
   if (claudeCode.status !== "configured") {
-    actions.push(`Claude Code fallback script: ${writeClaudeCodeFallbackScript(mcpUrl)}`);
+    const fallbackScript = writeClaudeCodeFallbackScript(mcpUrl);
+    actions.push("Claude Code was not configured automatically.");
+    actions.push(`After installing Claude Code, run: ${fallbackScript}`);
+    actions.push("Then restart Claude Code and check with `claude mcp list`.");
   }
 
   try {
@@ -484,9 +487,10 @@ async function commandHyperdriveInstall(options: {
 
 export function hyperdriveInstallNextSteps(): string[] {
   return [
-    "Reopen your editor so Hyperdrive loads for this project.",
-    "Start with Hyperdrive access bootstrap so provider sign-in and MFA are handled before setup work.",
-    "Continue scoped provider setup from this directory.",
+    "Restart Codex, Cursor, or Claude Code so the new Hyperdrive connection is loaded.",
+    "Open this project in that app.",
+    "Ask: \"Use Hyperdrive to prepare provider sign-in, MFA, and email verification for this project.\"",
+    "Check anytime with `varel hyperdrive status`.",
   ];
 }
 
@@ -549,7 +553,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.8")
+    .version("0.2.9")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })

@@ -156,6 +156,8 @@ describe("program argv", () => {
     const text = hyperdriveInstallNextSteps().join("\n");
 
     expect(text).toContain("Hyperdrive");
-    expect(text).not.toMatch(/Codex|MCP|varel_hyperdrive_|tool/i);
+    expect(text).toContain("provider sign-in, MFA, and email verification");
+    expect(text).toContain("varel hyperdrive status");
+    expect(text).not.toMatch(/varel_hyperdrive_|MCP tool/i);
   });
 });
