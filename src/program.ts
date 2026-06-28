@@ -25,6 +25,7 @@ import {
   installHyperdriveClaudeCodeConfig,
   installHyperdriveUserCursorConfig,
   userCursorConfigPath,
+  writeClaudeCodeFallbackScript,
 } from "./mcp-clients.js";
 import {
   defaultIntegrations,
@@ -442,8 +443,8 @@ async function commandHyperdriveInstall(options: {
       claudeCode.status === "configured"
         ? "configured"
         : claudeCode.status === "not-found"
-          ? "not detected; command shown"
-          : "manual setup needed",
+          ? "not detected; fallback script written"
+          : "manual setup script written",
       claudeCode.status === "configured" ? "success" : "warning",
     ),
   ];
@@ -452,7 +453,7 @@ async function commandHyperdriveInstall(options: {
   }
   const actions = hyperdriveInstallNextSteps();
   if (claudeCode.status !== "configured") {
-    actions.push(`Claude Code fallback: ${claudeCode.manualCommand}`);
+    actions.push(`Claude Code fallback script: ${writeClaudeCodeFallbackScript(mcpUrl)}`);
   }
 
   try {
@@ -548,7 +549,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.7")
+    .version("0.2.8")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })

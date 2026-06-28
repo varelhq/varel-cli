@@ -24,6 +24,11 @@ export function userCursorConfigPath() {
   return process.env.CURSOR_MCP_CONFIG ?? path.join(os.homedir(), ".cursor", "mcp.json");
 }
 
+export function userClaudeCodeFallbackScriptPath() {
+  return process.env.VAREL_CLAUDE_CODE_FALLBACK_SCRIPT
+    ?? path.join(os.homedir(), ".varel", "install-hyperdrive-claude-code.sh");
+}
+
 export function hyperdriveCursorServerConfig({
   mcpUrl,
   token,
@@ -80,13 +85,14 @@ export async function installHyperdriveClaudeCodeConfig({
     "user",
     "--transport",
     "http",
-    "--header",
-    `Authorization: Bearer ${token}`,
     HYPERDRIVE_SERVER_NAME,
     mcpUrl,
+    "--header",
+    `Authorization: Bearer ${token}`,
   ];
 
   try {
+    await removeExistingClaudeCodeConfig(run);
     await run("claude", args, { stdio: "ignore" });
     return {
       status: "configured",
@@ -101,8 +107,23 @@ export async function installHyperdriveClaudeCodeConfig({
   }
 }
 
+async function removeExistingClaudeCodeConfig(run: RunCommand) {
+  try {
+    await run(
+      "claude",
+      ["mcp", "remove", "--scope", "user", HYPERDRIVE_SERVER_NAME],
+      { stdio: "ignore" },
+    );
+  } catch (error) {
+    if (isCommandNotFound(error)) {
+      throw error;
+    }
+  }
+}
+
 export function claudeCodeManualInstallCommand(mcpUrl: string) {
   return [
+    "TOKEN=\"$(varel whoami --token-only)\";",
     "claude",
     "mcp",
     "add",
@@ -110,11 +131,43 @@ export function claudeCodeManualInstallCommand(mcpUrl: string) {
     "user",
     "--transport",
     "http",
-    "--header",
-    "\"Authorization: Bearer $(varel whoami --token-only)\"",
     HYPERDRIVE_SERVER_NAME,
     shellQuote(mcpUrl),
+    "--header",
+    "\"Authorization: Bearer $TOKEN\"",
   ].join(" ");
+}
+
+export function writeClaudeCodeFallbackScript(mcpUrl: string) {
+  const file = userClaudeCodeFallbackScriptPath();
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(
+    file,
+    [
+      "#!/bin/sh",
+      "set -eu",
+      "",
+      "TOKEN=\"$(varel whoami --token-only)\"",
+      [
+        "exec",
+        "claude",
+        "mcp",
+        "add",
+        "--scope",
+        "user",
+        "--transport",
+        "http",
+        HYPERDRIVE_SERVER_NAME,
+        shellQuote(mcpUrl),
+        "--header",
+        "\"Authorization: Bearer $TOKEN\"",
+      ].join(" "),
+      "",
+    ].join("\n"),
+    { mode: 0o700 },
+  );
+  fs.chmodSync(file, 0o700);
+  return file;
 }
 
 export function hasHyperdriveCursorConfig() {
