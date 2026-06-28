@@ -21,6 +21,12 @@ import {
 } from "./codex.js";
 import { startBrowserLogin } from "./login.js";
 import {
+  hasHyperdriveCursorConfig,
+  installHyperdriveClaudeCodeConfig,
+  installHyperdriveUserCursorConfig,
+  userCursorConfigPath,
+} from "./mcp-clients.js";
+import {
   defaultIntegrations,
   parseIntegrations,
   parseWorkflow,
@@ -160,10 +166,14 @@ async function commandDoctor(options: { projectDir?: string; apiUrl?: string }) 
   const config = readConfig();
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
   const marker = path.join(projectDir, ".varel", "project.json");
-  const codexConfig = path.join(projectDir, ".codex", "config.toml");
+  const codexConfig = userCodexConfigPath();
   const hasAuth = Boolean(config.auth?.token);
   const hasProject = fs.existsSync(marker);
-  const hasHyperdriveConfig = fs.existsSync(codexConfig);
+  const hasCodexConfig =
+    fs.existsSync(codexConfig) &&
+    fs.readFileSync(codexConfig, "utf8").includes("varel-hyperdrive");
+  const hasCursorConfig = hasHyperdriveCursorConfig();
+  const hasHyperdriveConfig = hasCodexConfig || hasCursorConfig;
 
   renderInfo(
     "Doctor",
@@ -171,7 +181,8 @@ async function commandDoctor(options: { projectDir?: string; apiUrl?: string }) 
       line("auth", hasAuth ? "present" : "missing", hasAuth ? "success" : "warning"),
       line("api", options.apiUrl ?? config.apiUrl ?? defaultApiUrl(), "muted"),
       line("project", hasProject ? "varel core" : "not detected", hasProject ? "success" : "warning"),
-      line("hyperdrive config", hasHyperdriveConfig ? codexConfig : "not installed", hasHyperdriveConfig ? "success" : "warning"),
+      line("codex", hasCodexConfig ? codexConfig : "not configured", hasCodexConfig ? "success" : "warning"),
+      line("cursor", hasCursorConfig ? userCursorConfigPath() : "not configured", hasCursorConfig ? "success" : "warning"),
     ],
     doctorActions({ hasAuth, hasProject, hasHyperdriveConfig, projectDir }),
   );
@@ -410,18 +421,39 @@ async function commandHyperdriveInstall(options: {
   const mcpUrl =
     options.hyperdriveUrl ?? options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
   const projectCleanup = removeHyperdriveProjectCodexConfig(projectDir);
-  installHyperdriveUserCodexConfig({
+  const codexFile = installHyperdriveUserCodexConfig({
+    mcpUrl,
+    token: auth.token,
+  });
+  const cursorFile = installHyperdriveUserCursorConfig({
+    mcpUrl,
+    token: auth.token,
+  });
+  const claudeCode = await installHyperdriveClaudeCodeConfig({
     mcpUrl,
     token: auth.token,
   });
   const details = [
     line("project", projectDir),
-    line("editor", "configured", "success"),
+    line("codex", `configured ${codexFile}`, "success"),
+    line("cursor", `configured ${cursorFile}`, "success"),
+    line(
+      "claude code",
+      claudeCode.status === "configured"
+        ? "configured"
+        : claudeCode.status === "not-found"
+          ? "not detected; command shown"
+          : "manual setup needed",
+      claudeCode.status === "configured" ? "success" : "warning",
+    ),
   ];
   if (projectCleanup.removed) {
     details.push(line("cleanup", "removed old project settings", "success"));
   }
   const actions = hyperdriveInstallNextSteps();
+  if (claudeCode.status !== "configured") {
+    actions.push(`Claude Code fallback: ${claudeCode.manualCommand}`);
+  }
 
   try {
     const hyperdriveStatus = await fetchHyperdriveMcpStatus({ mcpUrl, auth });
@@ -472,15 +504,18 @@ async function commandHyperdriveStatus(options: {
   });
   const projectDir = path.resolve(options.projectDir ?? process.cwd());
   const userConfig = userCodexConfigPath();
-  const hasHyperdriveConfig =
+  const hasCodexConfig =
     fs.existsSync(userConfig) &&
     fs.readFileSync(userConfig, "utf8").includes("varel-hyperdrive");
+  const hasCursorConfig = hasHyperdriveCursorConfig();
   const mcpUrl =
     options.hyperdriveUrl ?? options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
   const details = [
     line("subscription", status.hyperdriveActive ? "active" : "inactive", status.hyperdriveActive ? "success" : "warning"),
     line("project", projectDir),
-    line("editor", hasHyperdriveConfig ? "configured" : "not configured", hasHyperdriveConfig ? "success" : "warning"),
+    line("codex", hasCodexConfig ? userConfig : "not configured", hasCodexConfig ? "success" : "warning"),
+    line("cursor", hasCursorConfig ? userCursorConfigPath() : "not configured", hasCursorConfig ? "success" : "warning"),
+    line("claude code", "check with `claude mcp list`", "muted"),
     line("service", mcpUrl, "muted"),
   ];
 
@@ -513,7 +548,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.6")
+    .version("0.2.7")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
