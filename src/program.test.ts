@@ -2,10 +2,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { execa } from "execa";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeArgv,
+  prepareProjectGit,
   resolveInitSetupConfig,
   shouldPromptForSetup,
   coreCloneRecoveryActions,
@@ -69,6 +71,52 @@ describe("program argv", () => {
         },
       ]).join("\n"),
     ).toContain("GitHub repository access benefit");
+  });
+
+  it("reinitializes cloned core as a fresh git repository without a remote", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "varel-cli-"));
+    const projectDir = path.join(tempRoot, "app");
+
+    try {
+      await fs.mkdir(path.join(projectDir, ".git"), { recursive: true });
+      await fs.writeFile(path.join(projectDir, "README.md"), "# App\n");
+      await fs.writeFile(
+        path.join(projectDir, ".git", "config"),
+        [
+          "[core]",
+          "\trepositoryformatversion = 0",
+          "[remote \"origin\"]",
+          "\turl = git@github.com:varelhq/varel-core.git",
+          "",
+        ].join("\n"),
+      );
+
+      await prepareProjectGit({ targetDir: projectDir, initializeGit: true });
+
+      await expect(fs.stat(path.join(projectDir, ".git"))).resolves.toBeDefined();
+      const origin = await execa("git", ["remote", "get-url", "origin"], {
+        cwd: projectDir,
+        reject: false,
+      });
+      expect(origin.exitCode).not.toBe(0);
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("removes cloned git metadata when git initialization is disabled", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "varel-cli-"));
+    const projectDir = path.join(tempRoot, "app");
+
+    try {
+      await fs.mkdir(path.join(projectDir, ".git"), { recursive: true });
+
+      await prepareProjectGit({ targetDir: projectDir, initializeGit: false });
+
+      await expect(fs.access(path.join(projectDir, ".git"))).rejects.toThrow();
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true });
+    }
   });
 
   it("resolves local-first setup defaults for noninteractive init", async () => {

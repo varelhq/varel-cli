@@ -231,6 +231,20 @@ async function cloneCore({
   );
 }
 
+export async function prepareProjectGit({
+  targetDir,
+  initializeGit,
+}: {
+  targetDir: string;
+  initializeGit: boolean;
+}) {
+  fs.rmSync(path.join(targetDir, ".git"), { recursive: true, force: true });
+
+  if (initializeGit) {
+    await execa("git", ["init"], { cwd: targetDir });
+  }
+}
+
 export function shouldPromptForSetup(options: {
   workflow?: string;
   integrations?: string;
@@ -346,6 +360,7 @@ async function commandInit(options: {
   localCore?: string;
   repoUrl?: string;
   skipInstall?: boolean;
+  disableGit?: boolean;
   apiUrl?: string;
   workflow?: string;
   integrations?: string;
@@ -378,6 +393,7 @@ async function commandInit(options: {
             .join(" then "),
     ),
     line("install", options.skipInstall ? "skipped" : "pnpm install"),
+    line("git", options.disableGit ? "disabled" : "fresh local repo"),
     line("workflow", setup.workflow),
     line("environments", setup.environments.join(", ")),
   ]);
@@ -389,15 +405,28 @@ async function commandInit(options: {
   });
 
   writeProjectSetupConfig({ projectDir: targetDir, setup });
+  await prepareProjectGit({
+    targetDir,
+    initializeGit: !options.disableGit,
+  });
 
   if (!options.skipInstall) {
     await execa("pnpm", ["install"], { cwd: targetDir, stdio: "inherit" });
   }
 
+  const nextSteps = [`cd ${targetDir}`];
+  if (!options.disableGit) {
+    nextSteps.push("git remote add origin <your-repo-url>");
+  }
+  nextSteps.push("varel hyperdrive install");
+
   renderDone(
     "Core initialized",
-    [line("directory", targetDir)],
-    [`cd ${targetDir}`, "varel hyperdrive install"],
+    [
+      line("directory", targetDir),
+      line("git", options.disableGit ? "not initialized" : "initialized without a remote"),
+    ],
+    nextSteps,
   );
 }
 
@@ -552,7 +581,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.11")
+    .version("0.2.12")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
@@ -563,6 +592,7 @@ Examples:
   $ varel login
   $ varel init my-app
   $ varel init my-app --workflow local-first --integrations clerk,convex,polar,sanity,resend,vercel
+  $ varel init my-app --disable-git
   $ varel hyperdrive install --project-dir ./my-app
   $ varel doctor
 
@@ -615,6 +645,7 @@ Environment:
     .option("--local-core <dir>", "Use a local core checkout")
     .option("--repo-url <url>", "Override the core repository clone URL")
     .option("--skip-install", "Skip pnpm install")
+    .option("--disable-git", "Skip fresh Git repository initialization")
     .option("--api-url <url>", "Varel API URL")
     .option("--workflow <workflow>", "Setup workflow: local-first or launch-ready")
     .option(

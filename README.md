@@ -10,7 +10,7 @@ cd my-app
 varel hyperdrive install
 ```
 
-The CLI authenticates the user, checks core and Hyperdrive access, clones the private core, and connects Hyperdrive to supported local agent clients.
+The CLI authenticates the user, checks core and Hyperdrive access, creates a fresh app from the private core, and connects Hyperdrive to supported local agent clients.
 
 After installing Hyperdrive, restart Codex or Cursor, and restart Claude Code
 or run `/reload-plugins`. Open the project in that app and ask Hyperdrive to
@@ -25,7 +25,7 @@ varel login                    # Authenticate this machine with Varel
 varel logout                   # Remove local CLI auth
 varel whoami                   # Show account and entitlement status
 varel doctor                   # Inspect auth, project, and Hyperdrive config
-varel init [targetDir]         # Clone the private core into a new app
+varel init [targetDir]         # Create a fresh app from the private core
 varel hyperdrive install   # Connect Hyperdrive to Codex, Cursor, and Claude Code
 varel hyperdrive status    # Show Hyperdrive subscription and connection status
 ```
@@ -44,7 +44,7 @@ cannot be configured automatically, the command writes a token-safe repair
 script at `~/.varel/install-hyperdrive-claude-code.sh`. `varel hyperdrive
 status` checks that your account and Hyperdrive connection are ready.
 
-`varel init` checks your Varel entitlement first, then tries to clone the private core over SSH and falls back to HTTPS. If GitHub access fails after entitlement approval, connect the Polar GitHub repository access benefit in the Varel customer portal, verify access to `varelhq/varel-core`, and rerun `varel init`. Support can provide `--repo-url` or `VAREL_CORE_REPO_URL` for temporary clone overrides.
+`varel init` checks your Varel entitlement first, then tries to clone the private core over SSH and falls back to HTTPS. After the core files are copied, it removes the template repository metadata and initializes a fresh local Git repository without a remote. Add your own remote with `git remote add origin <your-repo-url>`, or pass `--disable-git` to leave the new app uninitialized. If GitHub access fails after entitlement approval, connect the Polar GitHub repository access benefit in the Varel customer portal, verify access to `varelhq/varel-core`, and rerun `varel init`. Support can provide `--repo-url` or `VAREL_CORE_REPO_URL` for temporary clone overrides.
 
 ## Development
 
