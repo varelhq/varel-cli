@@ -22,6 +22,7 @@ import {
 import { startBrowserLogin } from "./login.js";
 import {
   hasHyperdriveCursorConfig,
+  hasHyperdriveClaudeCodePluginConfig,
   installHyperdriveClaudeCodeConfig,
   installHyperdriveUserCursorConfig,
   userCursorConfigPath,
@@ -432,7 +433,6 @@ async function commandHyperdriveInstall(options: {
   });
   const claudeCode = await installHyperdriveClaudeCodeConfig({
     mcpUrl,
-    token: auth.token,
   });
   const details = [
     line("project", projectDir),
@@ -441,10 +441,8 @@ async function commandHyperdriveInstall(options: {
     line(
       "claude code",
       claudeCode.status === "configured"
-        ? "ready - restart Claude Code"
-        : claudeCode.status === "not-found"
-          ? "not installed; fallback script available"
-          : "needs repair; fallback script available",
+        ? `plugin ready - restart Claude Code (${claudeCode.pluginDir})`
+        : "plugin needs repair; fallback script available",
       claudeCode.status === "configured" ? "success" : "warning",
     ),
   ];
@@ -454,9 +452,9 @@ async function commandHyperdriveInstall(options: {
   const actions = hyperdriveInstallNextSteps();
   if (claudeCode.status !== "configured") {
     const fallbackScript = writeClaudeCodeFallbackScript(mcpUrl);
-    actions.push("Claude Code was not configured automatically.");
-    actions.push(`After installing Claude Code, run: ${fallbackScript}`);
-    actions.push("Then restart Claude Code and check with `claude mcp list`.");
+    actions.push("Claude Code plugin was not configured automatically.");
+    actions.push(`Run the repair script: ${fallbackScript}`);
+    actions.push("Then restart Claude Code or run `/reload-plugins`, and check `/mcp`.");
   }
 
   try {
@@ -487,7 +485,7 @@ async function commandHyperdriveInstall(options: {
 
 export function hyperdriveInstallNextSteps(): string[] {
   return [
-    "Restart Codex, Cursor, or Claude Code so the new Hyperdrive connection is loaded.",
+    "Restart Codex or Cursor, and restart Claude Code or run `/reload-plugins` so Hyperdrive loads.",
     "Open this project in that app.",
     "Ask: \"Use Hyperdrive to prepare provider sign-in, MFA, and email verification for this project.\"",
     "Check anytime with `varel hyperdrive status`.",
@@ -513,6 +511,7 @@ async function commandHyperdriveStatus(options: {
     fs.existsSync(userConfig) &&
     fs.readFileSync(userConfig, "utf8").includes("varel-hyperdrive");
   const hasCursorConfig = hasHyperdriveCursorConfig();
+  const claudeCodePluginDir = hasHyperdriveClaudeCodePluginConfig();
   const mcpUrl =
     options.hyperdriveUrl ?? options.mcpUrl ?? config.hyperdriveMcpUrl ?? defaultHyperdriveMcpUrl();
   const details = [
@@ -520,7 +519,7 @@ async function commandHyperdriveStatus(options: {
     line("project", projectDir),
     line("codex", hasCodexConfig ? userConfig : "not configured", hasCodexConfig ? "success" : "warning"),
     line("cursor", hasCursorConfig ? userCursorConfigPath() : "not configured", hasCursorConfig ? "success" : "warning"),
-    line("claude code", "check with `claude mcp list`", "muted"),
+    line("claude code", claudeCodePluginDir ?? "plugin not configured", claudeCodePluginDir ? "success" : "warning"),
     line("service", mcpUrl, "muted"),
   ];
 
@@ -553,7 +552,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.10")
+    .version("0.2.11")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })

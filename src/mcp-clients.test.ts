@@ -6,13 +6,17 @@ import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  claudeCodeManualInstallCommand,
+  claudeCodePluginManifest,
+  claudeCodePluginMcpConfig,
   hasHyperdriveCursorConfig,
+  hasHyperdriveClaudeCodePluginConfig,
   hyperdriveCursorServerConfig,
   installHyperdriveClaudeCodeConfig,
   installHyperdriveUserCursorConfig,
+  userClaudeCodePluginDir,
   userCursorConfigPath,
   writeClaudeCodeFallbackScript,
+  writeClaudeCodePlugin,
 } from "./mcp-clients.js";
 
 describe("MCP client config", () => {
@@ -65,59 +69,85 @@ describe("MCP client config", () => {
     });
   });
 
-  it("installs Claude Code through the user-scoped http MCP command", async () => {
+  it("renders Claude Code plugin config with a dynamic header helper", () => {
+    expect(claudeCodePluginManifest()).toMatchObject({
+      name: "varel-hyperdrive",
+      displayName: "Varel Hyperdrive",
+      mcpServers: "./.mcp.json",
+      skills: "./skills/",
+    });
+
+    expect(claudeCodePluginMcpConfig("https://hyperdrive.varel.dev/mcp")).toEqual({
+      mcpServers: {
+        "varel-hyperdrive": {
+          type: "http",
+          url: "https://hyperdrive.varel.dev/mcp",
+          headersHelper: "./bin/varel-hyperdrive-headers",
+        },
+      },
+    });
+  });
+
+  it("writes a Claude Code plugin without storing the token", () => {
+    const pluginDir = path.join(os.tmpdir(), `varel-claude-plugin-${randomUUID()}`);
+    vi.stubEnv("VAREL_CLAUDE_CODE_PLUGIN_DIR", pluginDir);
+
+    const file = writeClaudeCodePlugin({ mcpUrl: "https://hyperdrive.varel.dev/mcp" });
+
+    expect(file).toBe(userClaudeCodePluginDir());
+    expect(hasHyperdriveClaudeCodePluginConfig()).toBe(pluginDir);
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(pluginDir, ".claude-plugin", "plugin.json"), "utf8"),
+    ) as { name: string };
+    const mcpConfig = JSON.parse(
+      fs.readFileSync(path.join(pluginDir, ".mcp.json"), "utf8"),
+    ) as { mcpServers: Record<string, unknown> };
+    const skill = fs.readFileSync(
+      path.join(pluginDir, "skills", "hyperdrive", "SKILL.md"),
+      "utf8",
+    );
+    const helper = path.join(pluginDir, "bin", "varel-hyperdrive-headers");
+    const helperContents = fs.readFileSync(helper, "utf8");
+
+    expect(manifest.name).toBe("varel-hyperdrive");
+    expect(mcpConfig.mcpServers["varel-hyperdrive"]).toEqual({
+      type: "http",
+      url: "https://hyperdrive.varel.dev/mcp",
+      headersHelper: "./bin/varel-hyperdrive-headers",
+    });
+    expect(skill).toContain("varel_hyperdrive_task_impact");
+    expect(skill).toContain("/reload-plugins");
+    expect(helperContents).toContain("varel whoami --token-only");
+    expect(helperContents).toContain("JSON.stringify");
+    expect(helperContents).not.toContain("stored-token");
+    expect(fs.statSync(helper).mode & 0o777).toBe(0o700);
+  });
+
+  it("installs Claude Code by writing a plugin and removing stale direct MCP config", async () => {
+    const pluginDir = path.join(os.tmpdir(), `varel-claude-plugin-${randomUUID()}`);
+    vi.stubEnv("VAREL_CLAUDE_CODE_PLUGIN_DIR", pluginDir);
     const run = vi.fn(async () => undefined);
 
     const result = await installHyperdriveClaudeCodeConfig({
       mcpUrl: "https://hyperdrive.varel.dev/mcp",
-      token: "stored-token",
       run,
     });
 
     expect(result.status).toBe("configured");
+    expect(result.pluginDir).toBe(pluginDir);
+    expect(hasHyperdriveClaudeCodePluginConfig()).toBe(pluginDir);
     expect(run).toHaveBeenNthCalledWith(
       1,
       "claude",
       ["mcp", "remove", "--scope", "user", "varel-hyperdrive"],
       { stdio: "ignore" },
     );
-    expect(run).toHaveBeenNthCalledWith(
-      2,
-      "claude",
-      [
-        "mcp",
-        "add",
-        "--scope",
-        "user",
-        "--transport",
-        "http",
-        "varel-hyperdrive",
-        "https://hyperdrive.varel.dev/mcp",
-        "--header",
-        "Authorization: Bearer stored-token",
-      ],
-      { stdio: "ignore" },
-    );
+    expect(run).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores missing existing Claude Code config before adding the server", async () => {
-    const run = vi.fn(async (_command: string, args: string[]) => {
-      if (args[1] === "remove") {
-        throw new Error("server not found");
-      }
-    });
-
-    const result = await installHyperdriveClaudeCodeConfig({
-      mcpUrl: "https://hyperdrive.varel.dev/mcp",
-      token: "stored-token",
-      run,
-    });
-
-    expect(result.status).toBe("configured");
-    expect(run).toHaveBeenCalledTimes(2);
-  });
-
-  it("returns a sanitized Claude Code fallback command when claude is unavailable", async () => {
+  it("does not require the claude executable to write the Claude Code plugin", async () => {
+    const pluginDir = path.join(os.tmpdir(), `varel-claude-plugin-${randomUUID()}`);
+    vi.stubEnv("VAREL_CLAUDE_CODE_PLUGIN_DIR", pluginDir);
     const run = vi.fn(async () => {
       const error = new Error("spawn claude ENOENT") as Error & { code: string };
       error.code = "ENOENT";
@@ -126,23 +156,12 @@ describe("MCP client config", () => {
 
     const result = await installHyperdriveClaudeCodeConfig({
       mcpUrl: "https://hyperdrive.varel.dev/mcp",
-      token: "stored-token",
       run,
     });
 
-    expect(result.status).toBe("not-found");
-    expect(result.manualCommand).toBe(
-      claudeCodeManualInstallCommand("https://hyperdrive.varel.dev/mcp"),
-    );
-    expect(result.manualCommand).toBe(
-      "TOKEN=\"$(varel whoami --token-only)\"; claude mcp add --scope user --transport http varel-hyperdrive 'https://hyperdrive.varel.dev/mcp' --header \"Authorization: Bearer $TOKEN\"",
-    );
-    expect(result.manualCommand).toContain("$(varel whoami --token-only)");
-    expect(result.manualCommand).toContain("; claude mcp add");
-    expect(result.manualCommand).toContain(
-      "varel-hyperdrive 'https://hyperdrive.varel.dev/mcp' --header",
-    );
-    expect(result.manualCommand).not.toContain("stored-token");
+    expect(result.status).toBe("configured");
+    expect(result.pluginDir).toBe(pluginDir);
+    expect(hasHyperdriveClaudeCodePluginConfig()).toBe(pluginDir);
   });
 
   it("writes a token-safe Claude Code fallback script", () => {
@@ -153,15 +172,10 @@ describe("MCP client config", () => {
 
     expect(file).toBe(script);
     const contents = fs.readFileSync(file, "utf8");
-    expect(contents).toContain("TOKEN=\"$(varel whoami --token-only)\"");
     expect(contents).toContain(
-      "claude mcp remove --scope user varel-hyperdrive >/dev/null 2>&1 || true",
+      "varel hyperdrive install --hyperdrive-url 'https://hyperdrive.varel.dev/mcp'",
     );
-    expect(contents).toContain(
-      "claude mcp add --scope user --transport http varel-hyperdrive 'https://hyperdrive.varel.dev/mcp' --header",
-    );
-    expect(contents).toContain("\"Authorization: Bearer $TOKEN\"");
-    expect(contents).toContain("Claude Code is configured for Varel Hyperdrive.");
+    expect(contents).toContain("Claude Code Varel Hyperdrive plugin is configured.");
     expect(contents).not.toContain("stored-token");
     expect(fs.statSync(file).mode & 0o777).toBe(0o700);
   });
