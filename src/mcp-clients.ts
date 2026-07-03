@@ -133,6 +133,7 @@ export function claudeCodeManualInstallCommand(mcpUrl: string) {
     "http",
     HYPERDRIVE_SERVER_NAME,
     shellQuote(mcpUrl),
+    // Claude Code's variadic --header option must trail the name and URL.
     "--header",
     "\"Authorization: Bearer $TOKEN\"",
   ].join(" ");
@@ -166,6 +167,7 @@ export function writeClaudeCodeFallbackScript(mcpUrl: string) {
         "http",
         HYPERDRIVE_SERVER_NAME,
         shellQuote(mcpUrl),
+        // Claude Code's variadic --header option must trail the name and URL.
         "--header",
         "\"Authorization: Bearer $TOKEN\"",
       ].join(" "),

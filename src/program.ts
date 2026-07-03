@@ -553,7 +553,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.9")
+    .version("0.2.10")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })

@@ -134,6 +134,9 @@ describe("MCP client config", () => {
     expect(result.manualCommand).toBe(
       claudeCodeManualInstallCommand("https://hyperdrive.varel.dev/mcp"),
     );
+    expect(result.manualCommand).toBe(
+      "TOKEN=\"$(varel whoami --token-only)\"; claude mcp add --scope user --transport http varel-hyperdrive 'https://hyperdrive.varel.dev/mcp' --header \"Authorization: Bearer $TOKEN\"",
+    );
     expect(result.manualCommand).toContain("$(varel whoami --token-only)");
     expect(result.manualCommand).toContain("; claude mcp add");
     expect(result.manualCommand).toContain(
