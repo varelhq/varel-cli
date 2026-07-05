@@ -5,7 +5,7 @@ import path from "node:path";
 import { execa } from "execa";
 
 const HYPERDRIVE_SERVER_NAME = "varel-hyperdrive";
-const CLAUDE_CODE_PLUGIN_VERSION = "0.2.11";
+const CLAUDE_CODE_PLUGIN_VERSION = "0.2.12";
 
 type JsonObject = Record<string, unknown>;
 
@@ -221,14 +221,16 @@ export function claudeCodePluginMcpConfig(mcpUrl: string) {
 function claudeCodePluginSkill() {
   return `---
 name: hyperdrive
-description: Use Varel Hyperdrive before Varel Core PRD/scoping, broad implementation, provider setup, domain work, dashboard/browser automation work, launch-quality work, and setup validation.
+description: Use Varel Hyperdrive only for Varel Core/Varel-based projects, or when the user explicitly asks for Hyperdrive, the Varel Hyperdrive plugin, skill, or MCP tools.
 ---
 
 # Varel Hyperdrive
 
-Use the bundled Varel Hyperdrive MCP server before broad Varel Core work, provider setup, domain work, dashboard or browser automation, launch-quality landing-page work, and setup validation.
+Use the bundled Varel Hyperdrive MCP server only when the active project is Varel Core/Varel-based, or when the user explicitly asks for Hyperdrive, the Varel Hyperdrive plugin, skill, or MCP tools. Do not use Hyperdrive for generic Next.js, provider, domain, dashboard, PRD, Computer Use, or deploy tasks outside Varel.
 
-Start broad tasks with \`varel_hyperdrive_task_impact\`. For context-heavy work, use \`varel_hyperdrive_thread_orchestration\` and then use the active Claude Code capabilities available in the session, such as subagents, worktrees, terminal commands, browser automation, Computer Use, or Chrome integration. Keep delegated workstreams non-overlapping and merge child summaries before final validation.
+Claude Code may expose MCP tools with server-qualified names such as \`mcp__varel-hyperdrive__varel_hyperdrive_task_impact\` rather than names that start exactly with \`varel_hyperdrive_\`. Do not report Hyperdrive tools unavailable only because exact-prefix lookup fails; use the exposed tool whose name contains \`hyperdrive\` and the intended tool stem.
+
+Start broad tasks with \`varel_hyperdrive_task_impact\`. For Varel Core PRD/scoping work, use \`varel_hyperdrive_starter_prd_prompt\`. For broad app, dashboard, authenticated workflow, or serious SaaS UI work, use \`varel_hyperdrive_product_design_spec_prompt\` before coding unless the user explicitly waives the quality gate. For launch-quality public pages, use \`varel_hyperdrive_landing_page_plan\`. For context-heavy work, use \`varel_hyperdrive_thread_orchestration\` and then use the active Claude Code capabilities available in the session, such as subagents, worktrees, terminal commands, browser automation, Computer Use, or Chrome integration. Keep delegated workstreams non-overlapping and merge child summaries before final validation.
 
 Before provider setup, call \`varel_hyperdrive_access_bootstrap\` with Varel-standard providers and any product-specific providers. After the user is signed in and MFA/email verification is complete, use local Varel commands, official provider CLIs, provider MCPs, provider APIs, dashboards, Browser, Computer Use, Chrome, or the active client's equivalent browser automation as needed. Create or select only resources dedicated to the current Varel product, and never create API keys in unrelated provider projects.
 

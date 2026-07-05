@@ -73,6 +73,7 @@ describe("MCP client config", () => {
     expect(claudeCodePluginManifest()).toMatchObject({
       name: "varel-hyperdrive",
       displayName: "Varel Hyperdrive",
+      version: "0.2.12",
       mcpServers: "./.mcp.json",
       skills: "./skills/",
     });
@@ -116,6 +117,10 @@ describe("MCP client config", () => {
       headersHelper: "./bin/varel-hyperdrive-headers",
     });
     expect(skill).toContain("varel_hyperdrive_task_impact");
+    expect(skill).toContain("mcp__varel-hyperdrive__varel_hyperdrive_task_impact");
+    expect(skill).toContain("exact-prefix lookup fails");
+    expect(skill).toContain("varel_hyperdrive_product_design_spec_prompt");
+    expect(skill).toContain("Do not use Hyperdrive for generic Next.js");
     expect(skill).toContain("/reload-plugins");
     expect(helperContents).toContain("varel whoami --token-only");
     expect(helperContents).toContain("JSON.stringify");
