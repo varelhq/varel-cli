@@ -46,6 +46,12 @@ status` checks that your account and Hyperdrive connection are ready.
 
 `varel init` checks your Varel entitlement first, then tries to clone the private core over SSH and falls back to HTTPS. After the core files are copied, it removes the template repository metadata and initializes a fresh local Git repository without a remote. Add your own remote with `git remote add origin <your-repo-url>`, or pass `--disable-git` to leave the new app uninitialized. If GitHub access fails after entitlement approval, connect the Polar GitHub repository access benefit in the Varel customer portal, verify access to `varelhq/varel-core`, and rerun `varel init`. Support can provide `--repo-url` or `VAREL_CORE_REPO_URL` for temporary clone overrides.
 
+The interactive init wizard defaults to Launch-ready with local/development and
+production selected. Preview is optional because some provider preview
+environments require extra setup or paid tiers. For scripted init, use
+`--environments local,prod` or add preview explicitly with
+`--environments local,preview,prod`.
+
 ## Development
 
 ```bash

@@ -30,10 +30,14 @@ import {
 } from "./mcp-clients.js";
 import {
   defaultIntegrations,
+  environmentsForWorkflow,
+  parseEnvironments,
   parseIntegrations,
   parseWorkflow,
   setupConfigForWorkflow,
+  setupEnvironments,
   setupIntegrations,
+  validateEnvironmentsForWorkflow,
   writeProjectSetupConfig,
   type SetupConfig,
   type SetupIntegration,
@@ -247,6 +251,7 @@ export async function prepareProjectGit({
 
 export function shouldPromptForSetup(options: {
   workflow?: string;
+  environments?: string;
   integrations?: string;
   interactive?: boolean;
 }) {
@@ -256,6 +261,7 @@ export function shouldPromptForSetup(options: {
 
   return (
     !options.workflow &&
+    !options.environments &&
     !options.integrations &&
     Boolean(process.stdin.isTTY && process.stdout.isTTY)
   );
@@ -263,21 +269,39 @@ export function shouldPromptForSetup(options: {
 
 async function promptForSetupConfig(): Promise<SetupConfig> {
   const defaults = defaultIntegrations();
+  const defaultWorkflow = "launch-ready";
+  const defaultEnvironments = environmentsForWorkflow(defaultWorkflow);
   const answer = await promptInitSetupWizard({
-    defaultWorkflow: "local-first",
+    defaultWorkflow,
+    defaultEnvironments,
     workflows: [
       {
         value: "local-first",
         label: "Local-first",
         description: "Smallest setup surface for fast local development.",
-        tag: "recommended",
+        defaultEnvironments: environmentsForWorkflow("local-first"),
       },
       {
         value: "launch-ready",
         label: "Launch-ready",
-        description: "Includes preview and production environments up front.",
+        description: "Production-ready setup with optional preview environments.",
+        defaultEnvironments,
+        tag: "recommended",
       },
     ],
+    environments: setupEnvironments.map((environment) => ({
+      value: environment,
+      label: setupEnvironmentLabel(environment),
+      description: setupEnvironmentDescription(environment),
+      defaultSelected: defaultEnvironments.includes(environment),
+      required: environment === "development",
+      tag:
+        environment === "production"
+          ? "default"
+          : environment === "preview"
+            ? "optional"
+            : undefined,
+    })),
     integrations: setupIntegrations.map((integration) => ({
       value: integration,
       label: setupIntegrationLabel(integration),
@@ -289,8 +313,37 @@ async function promptForSetupConfig(): Promise<SetupConfig> {
 
   return setupConfigForWorkflow({
     workflow: parseWorkflow(answer.workflow),
+    environments: parseEnvironments(answer.environments.join(",")),
     integrations: parseIntegrations(answer.integrations.join(",")),
   });
+}
+
+const setupEnvironmentMeta: Record<
+  (typeof setupEnvironments)[number],
+  { label: string; description: string }
+> = {
+  development: {
+    label: "Local / development",
+    description: "Local app runs and development-scoped provider resources.",
+  },
+  production: {
+    label: "Production",
+    description: "Launch domain, production env, and production provider resources.",
+  },
+  preview: {
+    label: "Preview",
+    description: "Optional preview deploys when every provider supports that tier.",
+  },
+};
+
+function setupEnvironmentLabel(environment: (typeof setupEnvironments)[number]) {
+  return setupEnvironmentMeta[environment].label;
+}
+
+function setupEnvironmentDescription(
+  environment: (typeof setupEnvironments)[number],
+) {
+  return setupEnvironmentMeta[environment].description;
 }
 
 const setupIntegrationMeta: Record<
@@ -323,7 +376,7 @@ const setupIntegrationMeta: Record<
   },
   vercel: {
     label: "Vercel",
-    description: "Hosting config, preview deploys, and production env slots.",
+    description: "Hosting config, optional preview deploys, and production env slots.",
   },
   calCom: {
     label: "Cal.com",
@@ -341,6 +394,7 @@ function setupIntegrationDescription(integration: SetupIntegration) {
 
 export async function resolveInitSetupConfig(options: {
   workflow?: string;
+  environments?: string;
   integrations?: string;
   interactive?: boolean;
 }): Promise<SetupConfig> {
@@ -348,8 +402,21 @@ export async function resolveInitSetupConfig(options: {
     return promptForSetupConfig();
   }
 
+  const environments = parseEnvironments(options.environments);
+  const workflow = parseWorkflow(
+    options.workflow ??
+      (environments?.some((environment) => environment !== "development")
+        ? "launch-ready"
+        : undefined),
+  );
+
+  if (environments) {
+    validateEnvironmentsForWorkflow(workflow, environments);
+  }
+
   return setupConfigForWorkflow({
-    workflow: parseWorkflow(options.workflow),
+    workflow,
+    environments,
     integrations: parseIntegrations(options.integrations),
   });
 }
@@ -363,6 +430,7 @@ async function commandInit(options: {
   disableGit?: boolean;
   apiUrl?: string;
   workflow?: string;
+  environments?: string;
   integrations?: string;
 }) {
   const config = readConfig();
@@ -380,6 +448,7 @@ async function commandInit(options: {
   const targetDir = path.resolve(options.dir ?? options.targetDir ?? "varel-app");
   const setup = await resolveInitSetupConfig({
     workflow: options.workflow,
+    environments: options.environments,
     integrations: options.integrations,
   });
   renderInfo("Initializing core", [
@@ -581,7 +650,7 @@ export async function run(argv: string[]) {
   program
     .name("varel")
     .description("Initialize Varel core apps and install Varel Hyperdrive.")
-    .version("0.2.12")
+    .version("0.2.13")
     .showHelpAfterError()
     .showSuggestionAfterError()
     .configureHelp({ sortSubcommands: true })
@@ -591,6 +660,8 @@ export async function run(argv: string[]) {
 Examples:
   $ varel login
   $ varel init my-app
+  $ varel init my-app --workflow launch-ready --environments local,prod
+  $ varel init my-app --workflow launch-ready --environments local,preview,prod
   $ varel init my-app --workflow local-first --integrations clerk,convex,polar,sanity,resend,vercel
   $ varel init my-app --disable-git
   $ varel hyperdrive install --project-dir ./my-app
@@ -648,6 +719,10 @@ Environment:
     .option("--disable-git", "Skip fresh Git repository initialization")
     .option("--api-url <url>", "Varel API URL")
     .option("--workflow <workflow>", "Setup workflow: local-first or launch-ready")
+    .option(
+      "--environments <list>",
+      "Comma-separated environments: local, preview, production",
+    )
     .option(
       "--integrations <list>",
       "Comma-separated setup integrations to enable",

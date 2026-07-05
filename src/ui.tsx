@@ -21,6 +21,16 @@ export type InitWizardWorkflowOption = {
   value: string;
   label: string;
   description: string;
+  defaultEnvironments?: string[];
+  tag?: string;
+};
+
+export type InitWizardEnvironmentOption = {
+  value: string;
+  label: string;
+  description: string;
+  defaultSelected?: boolean;
+  required?: boolean;
   tag?: string;
 };
 
@@ -34,16 +44,19 @@ export type InitWizardIntegrationOption = {
 
 export type InitWizardResult = {
   workflow: string;
+  environments: string[];
   integrations: string[];
 };
 
 type InitSetupWizardProps = {
   workflows: InitWizardWorkflowOption[];
+  environments: InitWizardEnvironmentOption[];
   integrations: InitWizardIntegrationOption[];
   defaultWorkflow: string;
+  defaultEnvironments: string[];
 };
 
-type WizardStep = "workflow" | "integrations";
+type WizardStep = "workflow" | "environments" | "integrations";
 
 const toneColor: Record<DetailTone, string | undefined> = {
   default: undefined,
@@ -212,8 +225,10 @@ export async function promptInitSetupWizard(
 
 function InitSetupWizard({
   workflows,
+  environments,
   integrations,
   defaultWorkflow,
+  defaultEnvironments,
 }: InitSetupWizardProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
@@ -223,8 +238,11 @@ function InitSetupWizard({
   );
   const [step, setStep] = React.useState<WizardStep>("workflow");
   const [workflowIndex, setWorkflowIndex] = React.useState(defaultWorkflowIndex);
+  const [environmentIndex, setEnvironmentIndex] = React.useState(0);
   const [integrationIndex, setIntegrationIndex] = React.useState(0);
   const [error, setError] = React.useState<string | undefined>();
+  const [selectedEnvironments, setSelectedEnvironments] =
+    React.useState(defaultEnvironments);
   const [selectedIntegrations, setSelectedIntegrations] = React.useState(
     integrations
       .filter((integration) => integration.defaultSelected)
@@ -234,10 +252,27 @@ function InitSetupWizard({
   const panelWidth = Math.min(78, Math.max(32, terminalColumns - 2));
   const selectedWorkflow = workflows[workflowIndex] ?? workflows[0];
 
+  function selectWorkflow(index: number) {
+    const workflow = workflows[index];
+    if (!workflow) {
+      return;
+    }
+
+    setWorkflowIndex(index);
+    setSelectedEnvironments(
+      workflow.defaultEnvironments ?? defaultEnvironments,
+    );
+  }
+
   function moveCursor(delta: number) {
     setError(undefined);
     if (step === "workflow") {
-      setWorkflowIndex((index) => wrapIndex(index + delta, workflows.length));
+      selectWorkflow(wrapIndex(workflowIndex + delta, workflows.length));
+      return;
+    }
+
+    if (step === "environments") {
+      setEnvironmentIndex((index) => wrapIndex(index + delta, environments.length));
       return;
     }
 
@@ -258,7 +293,41 @@ function InitSetupWizard({
     );
   }
 
+  function toggleEnvironment(index: number) {
+    const environment = environments[index];
+    if (!environment) {
+      return;
+    }
+
+    if (environment.required) {
+      setError(`${environment.label} is always enabled.`);
+      return;
+    }
+
+    if (selectedWorkflow.value === "local-first" && environment.value !== "development") {
+      setError("Choose Launch-ready to enable preview or production.");
+      return;
+    }
+
+    if (selectedWorkflow.value === "launch-ready" && environment.value === "production") {
+      setError("Production is required for Launch-ready.");
+      return;
+    }
+
+    setError(undefined);
+    setSelectedEnvironments((selected) =>
+      selected.includes(environment.value)
+        ? selected.filter((value) => value !== environment.value)
+        : [...selected, environment.value],
+    );
+  }
+
   function finish() {
+    if (selectedEnvironments.length === 0) {
+      setError("Select at least one environment.");
+      return;
+    }
+
     if (selectedIntegrations.length === 0) {
       setError("Select at least one integration.");
       return;
@@ -266,6 +335,9 @@ function InitSetupWizard({
 
     exit({
       workflow: selectedWorkflow.value,
+      environments: environments
+        .filter((environment) => selectedEnvironments.includes(environment.value))
+        .map((environment) => environment.value),
       integrations: integrations
         .filter((integration) => selectedIntegrations.includes(integration.value))
         .map((integration) => integration.value),
@@ -288,6 +360,11 @@ function InitSetupWizard({
     if (key.escape || key.leftArrow) {
       setError(undefined);
       if (step === "integrations") {
+        setStep("environments");
+        return;
+      }
+
+      if (step === "environments") {
         setStep("workflow");
         return;
       }
@@ -299,12 +376,30 @@ function InitSetupWizard({
     if (step === "workflow") {
       const numericIndex = Number(input) - 1;
       if (Number.isInteger(numericIndex) && workflows[numericIndex]) {
-        setWorkflowIndex(numericIndex);
-        setStep("integrations");
+        selectWorkflow(numericIndex);
+        setStep("environments");
         return;
       }
 
       if (key.return || input === " " || key.rightArrow || key.tab) {
+        setStep("environments");
+      }
+      return;
+    }
+
+    if (step === "environments") {
+      const numericIndex = Number(input) - 1;
+      if (Number.isInteger(numericIndex) && environments[numericIndex]) {
+        toggleEnvironment(numericIndex);
+        return;
+      }
+
+      if (input === " ") {
+        toggleEnvironment(environmentIndex);
+        return;
+      }
+
+      if (key.return || key.rightArrow || key.tab) {
         setStep("integrations");
       }
       return;
@@ -353,6 +448,8 @@ function InitSetupWizard({
         <WizardHeader
           step={step}
           workflowLabel={selectedWorkflow?.label ?? "Select workflow"}
+          selectedEnvironmentCount={selectedEnvironments.length}
+          totalEnvironmentCount={environments.length}
           selectedCount={selectedIntegrations.length}
           totalCount={integrations.length}
         />
@@ -360,6 +457,12 @@ function InitSetupWizard({
           <WizardWorkflowStep
             workflows={workflows}
             selectedIndex={workflowIndex}
+          />
+        ) : step === "environments" ? (
+          <WizardEnvironmentStep
+            environments={environments}
+            selectedValues={selectedEnvironments}
+            selectedIndex={environmentIndex}
           />
         ) : (
           <WizardIntegrationStep
@@ -389,11 +492,15 @@ function InitSetupWizard({
 function WizardHeader({
   step,
   workflowLabel,
+  selectedEnvironmentCount,
+  totalEnvironmentCount,
   selectedCount,
   totalCount,
 }: {
   step: WizardStep;
   workflowLabel: string;
+  selectedEnvironmentCount: number;
+  totalEnvironmentCount: number;
   selectedCount: number;
   totalCount: number;
 }) {
@@ -404,15 +511,23 @@ function WizardHeader({
           {step === "workflow" ? "[1]" : "[x]"} Workflow
         </Text>
         <Text color="gray"> {"->"} </Text>
+        <Text color={step === "environments" ? amber.bright : amber.soft} bold>
+          {step === "workflow" ? "[2]" : step === "environments" ? "[2]" : "[x]"} Environments
+        </Text>
+        <Text color="gray"> {"->"} </Text>
         <Text color={step === "integrations" ? amber.bright : "gray"} bold>
-          [2] Integrations
+          [3] Integrations
         </Text>
       </Text>
       <Text color="white" bold>
-        {step === "workflow" ? "Choose your setup flow" : "Choose integrations"}
+        {step === "workflow"
+          ? "Choose your setup flow"
+          : step === "environments"
+            ? "Choose environments"
+            : "Choose integrations"}
       </Text>
       <Text color="gray">
-        Workflow: {workflowLabel} | Integrations: {selectedCount}/{totalCount}
+        Workflow: {workflowLabel} | Envs: {selectedEnvironmentCount}/{totalEnvironmentCount} | Integrations: {selectedCount}/{totalCount}
       </Text>
     </Box>
   );
@@ -465,6 +580,34 @@ function WizardIntegrationStep({
           label={integration.label}
           description={integration.description}
           tag={integration.tag}
+          color={amber.bright}
+        />
+      ))}
+    </Box>
+  );
+}
+
+function WizardEnvironmentStep({
+  environments,
+  selectedValues,
+  selectedIndex,
+}: {
+  environments: InitWizardEnvironmentOption[];
+  selectedValues: string[];
+  selectedIndex: number;
+}) {
+  return (
+    <Box flexDirection="column">
+      {environments.map((environment, index) => (
+        <WizardOption
+          key={environment.value}
+          index={index}
+          active={index === selectedIndex}
+          selected={selectedValues.includes(environment.value)}
+          marker={selectedValues.includes(environment.value) ? "[x]" : "[ ]"}
+          label={environment.label}
+          description={environment.description}
+          tag={environment.tag}
           color={amber.bright}
         />
       ))}

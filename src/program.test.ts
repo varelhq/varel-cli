@@ -144,7 +144,7 @@ describe("program argv", () => {
       }),
     ).resolves.toMatchObject({
       workflow: "launch-ready",
-      environments: ["development", "preview", "production"],
+      environments: ["development", "production"],
       integrations: {
         posthog: true,
         sanity: true,
@@ -153,15 +153,53 @@ describe("program argv", () => {
     });
   });
 
+  it("allows launch-ready preview environments as an explicit opt-in", async () => {
+    await expect(
+      resolveInitSetupConfig({
+        workflow: "launch-ready",
+        environments: "local,preview,prod",
+        interactive: false,
+      }),
+    ).resolves.toMatchObject({
+      workflow: "launch-ready",
+      environments: ["development", "preview", "production"],
+    });
+  });
+
+  it("infers launch-ready from explicit production environments", async () => {
+    await expect(
+      resolveInitSetupConfig({
+        environments: "local,prod",
+        interactive: false,
+      }),
+    ).resolves.toMatchObject({
+      workflow: "launch-ready",
+      environments: ["development", "production"],
+    });
+  });
+
   it("rejects invalid workflow and integration names", async () => {
     await expect(resolveInitSetupConfig({ workflow: "fast" })).rejects.toThrow();
     await expect(
       resolveInitSetupConfig({ integrations: "clerk,unknown" }),
     ).rejects.toThrow();
+    await expect(
+      resolveInitSetupConfig({
+        workflow: "launch-ready",
+        environments: "local",
+      }),
+    ).rejects.toThrow("launch-ready setup requires production");
+    await expect(
+      resolveInitSetupConfig({
+        workflow: "local-first",
+        environments: "local,prod",
+      }),
+    ).rejects.toThrow("local-first setup only supports local/development");
   });
 
   it("only prompts in a TTY when no setup flags are supplied", () => {
     expect(shouldPromptForSetup({ workflow: "local-first" })).toBe(false);
+    expect(shouldPromptForSetup({ environments: "local,prod" })).toBe(false);
     expect(shouldPromptForSetup({ integrations: "clerk" })).toBe(false);
   });
 
