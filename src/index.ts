@@ -44,8 +44,8 @@ function recoveryActions(message: string) {
 
   if (message.includes("Could not clone the Varel core")) {
     return [
-      "Confirm the Polar GitHub repository access benefit is connected to your GitHub account.",
       "Check SSH with `ssh -T git@github.com` or HTTPS auth with `gh auth status`.",
+      "If that GitHub account cannot access varelhq/varel-core, check its Polar repository access benefit.",
       "Use --repo-url or VAREL_CORE_REPO_URL if support gave you a temporary clone URL.",
     ];
   }

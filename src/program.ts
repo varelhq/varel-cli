@@ -78,6 +78,16 @@ function cloneErrorMessage(error: unknown) {
   return String(error);
 }
 
+export function coreCloneGitOptions(source: CloneSource): string[] {
+  if (source.label !== "https" || source.url !== CORE_REPO_HTTPS) {
+    return [];
+  }
+
+  // An exact URL identity rewrite beats broad HTTPS-to-SSH insteadOf rules.
+  // Keep credential helpers and user config intact; scope this to the fallback.
+  return ["-c", `url.${source.url}.insteadOf=${source.url}`];
+}
+
 export function coreCloneRecoveryActions(failures: CloneFailure[]) {
   const attempted = failures
     .map((failure) => `${failure.label}: ${failure.url}`)
@@ -85,10 +95,11 @@ export function coreCloneRecoveryActions(failures: CloneFailure[]) {
 
   return [
     `Clone attempts failed (${attempted}).`,
-    "Open the Polar customer portal from Varel and confirm the GitHub repository access benefit is connected to the right GitHub account.",
-    "Confirm that account can access varelhq/varel-core in GitHub.",
+    "Varel entitlement approval succeeded; GitHub clone authentication is a separate check.",
     "For SSH, run `ssh -T git@github.com` and confirm your key is accepted.",
     "For HTTPS, run `gh auth status` or sign in to GitHub in your credential manager.",
+    "Confirm the authenticated GitHub account can access varelhq/varel-core.",
+    "If repository access is missing, open the Polar customer portal from Varel and confirm the GitHub repository access benefit is connected to that account.",
     "If access was just granted, wait a minute and rerun `varel init`.",
   ];
 }
@@ -215,7 +226,7 @@ async function cloneCore({
   const failures: CloneFailure[] = [];
   for (const source of coreCloneSources(repoUrl)) {
     try {
-      await execa("git", ["clone", source.url, targetDir]);
+      await execa("git", [...coreCloneGitOptions(source), "clone", source.url, targetDir]);
       return;
     } catch (error) {
       failures.push({ ...source, message: cloneErrorMessage(error) });

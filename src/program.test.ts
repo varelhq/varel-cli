@@ -12,6 +12,7 @@ import {
   shouldPromptForSetup,
   coreCloneRecoveryActions,
   coreCloneSources,
+  coreCloneGitOptions,
   hyperdriveInstallNextSteps,
 } from "./program.js";
 import { writeProjectSetupConfig } from "./project-config.js";
@@ -71,6 +72,46 @@ describe("program argv", () => {
         },
       ]).join("\n"),
     ).toContain("GitHub repository access benefit");
+  });
+
+  it("keeps the HTTPS fallback on HTTPS despite a global SSH rewrite", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "varel-clone-"));
+    const configPath = path.join(tempRoot, "gitconfig");
+    const source = coreCloneSources().find((source) => source.label === "https")!;
+
+    try {
+      await fs.writeFile(configPath, [
+        '[url "ssh://git@github.com/"]',
+        '  insteadOf = https://github.com/',
+        '[credential "https://github.com"]',
+        '  helper = test-credential-helper',
+        '',
+      ].join("\n"));
+      const options = {
+        cwd: tempRoot,
+        env: { GIT_CONFIG_GLOBAL: configPath, GIT_CONFIG_NOSYSTEM: "1" },
+      };
+      const before = await fs.readFile(configPath, "utf8");
+      const rewritten = await execa("git", ["ls-remote", "--get-url", source.url], options);
+      expect(rewritten.stdout).toBe("ssh://git@github.com/varelhq/varel-core.git");
+
+      const fallback = await execa("git", [
+        ...coreCloneGitOptions(source), "ls-remote", "--get-url", source.url,
+      ], options);
+      expect(fallback.stdout).toBe(source.url);
+      const helper = await execa("git", [
+        ...coreCloneGitOptions(source), "config", "--get", "credential.https://github.com.helper",
+      ], options);
+      expect(helper.stdout).toBe("test-credential-helper");
+      expect(await fs.readFile(configPath, "utf8")).toBe(before);
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves configured transport behavior for SSH and custom clone URLs", () => {
+    expect(coreCloneGitOptions(coreCloneSources()[0])).toEqual([]);
+    expect(coreCloneGitOptions(coreCloneSources("https://github.com/custom/core.git")[0])).toEqual([]);
   });
 
   it("reinitializes cloned core as a fresh git repository without a remote", async () => {
